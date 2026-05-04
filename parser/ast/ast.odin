@@ -1,80 +1,85 @@
 package ast
 
-// basic types
+import "../tokens"
 
-Named_Type :: string // i32, bool
-Pointer_Type :: struct {
-	name: Named_Type,
-} // ^i32
+Type :: union {}
 
-Type :: union {
-	Named_Type,
-	Pointer_Type,
-}
-
-// expressions
-
-Identifier_Expr :: string // just something
-Int_Literal_Expr :: i32 // 12 (questioning is i32 enough?)
-Address_Of_Expr :: ^Expr // &something
-Derefernece_Expr :: ^Expr // ptr^
-
-Expr :: union {
-	Identifier_Expr,
-	Int_Literal_Expr,
-	Address_Of_Expr,
-	Derefernece_Expr,
-}
-
-// statements
-
-Var_Decl :: struct {
-	is_mut:   bool,
-	name:     string,
-	type_ann: Type,
-	init:     Expr,
-}
-
-Return :: struct {
-	obj: Expr,
-}
-
-If :: struct {
-	condition: Expr,
-	body:      [dynamic]Stmt,
-}
-
-Expr_Stmt :: struct {
-	obj: Expr,
-}
-
-Stmt :: union {
-	Var_Decl,
-	Return,
-	If,
-	Expr_Stmt,
-}
-
-// top level declarations
-
-Param_Pair :: struct {
-	name: string,
+Type_Pair :: struct {
+	name: string, // TODO: think of namespacing
 	type: Type,
 }
 
-Function :: struct {
-	name:        string,
-	params:      [dynamic]Param_Pair,
-	return_type: Type,
-	body:        [dynamic]Stmt,
+Program :: struct {
+	statements: [dynamic]^AST_Node,
 }
 
-Struct :: struct {
+Block :: struct {
+	statements: [dynamic]^AST_Node,
+}
+
+Var_Decl :: struct {
+	name:      string,
+	is_mut:    bool,
+	type_info: Type,
+	init_expr: ^AST_Node,
+}
+
+Fn_Decl :: struct {
+	name:     string,
+	args:     [dynamic]Type_Pair,
+	ret_type: Type,
+	body:     ^AST_Node,
+}
+
+Struct_Decl :: struct {
 	name:   string,
-	fields: [dynamic]Param_Pair,
+	fields: [dynamic]Type_Pair,
 }
 
-Decl :: union {
-	Function,
-	Struct,
+If_Stmt :: struct {
+	// TODO: think of many branches
+	condition: ^AST_Node,
+	body:      ^AST_Node,
+}
+
+For_Loop :: struct {
+	// TODO: consider this
+	init: ^AST_Node,
+	cond: ^AST_Node,
+	step: ^AST_Node,
+	body: ^AST_Node,
+}
+
+Identifier :: struct {
+	name: string,
+}
+
+Literal :: struct {
+	type:  Type,
+	value: string,
+}
+
+Binary_Op :: struct {
+	left:  ^AST_Node,
+	op:    tokens.Token, // this might cause cyclic deps issue
+	right: ^AST_Node,
+}
+
+Unary_Op :: struct {
+	op:      tokens.Token,
+	operand: ^AST_Node,
+}
+
+AST_Node :: union {
+	Program,
+	Block,
+	Var_Decl,
+	Fn_Decl,
+	Struct_Decl,
+	If_Stmt,
+	For_Loop,
+	Identifier,
+	Literal,
+	Binary_Op,
+	Unary_Op,
 }
