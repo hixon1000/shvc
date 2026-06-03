@@ -129,8 +129,9 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 // args as in name : type , name : type , ...
 parse_fn_signiture :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ast.Fn_Decl {
 	fn := ast.Fn_Decl{}
-	args := make([dynamic]ast.Type_Pair, arena)
-	fn.args = &args
+	args_ptr := new([dynamic]ast.Type_Pair, arena)
+	args_ptr^ = make([dynamic]ast.Type_Pair, arena)
+	fn.args = args_ptr
 	name, _ := next_token(tokenizer, arena).(tokens.Identifier)
 	fn.name = name.content
 
@@ -166,8 +167,10 @@ parse_struct_signiture :: proc(
 	arena: runtime.Allocator,
 ) -> ast.Struct_Decl {
 	structure := ast.Struct_Decl{}
-	fields := make([dynamic]ast.Type_Pair)
-	structure.fields = &fields
+	fields_ptr := new([dynamic]ast.Type_Pair, arena)
+	fields_ptr^ = make([dynamic]ast.Type_Pair, arena)
+
+	structure.fields = fields_ptr
 	name, _ := next_token(tokenizer, arena).(tokens.Identifier)
 	structure.name = name.content
 
@@ -224,9 +227,10 @@ add_statement :: proc(parent: ^ast.AST_Node, statement: ^ast.AST_Node) {
 }
 
 parse_program :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ast.AST_Node {
-	dyn_arr := make([dynamic]^ast.AST_Node, arena)
+	dyn_arr_ptr := new([dynamic]^ast.AST_Node, arena)
+	dyn_arr_ptr^ = make([dynamic]^ast.AST_Node, arena)
 	root: ast.AST_Node = ast.Program {
-		statements = ast.Block{&dyn_arr},
+		statements = ast.Block{dyn_arr_ptr},
 	}
 
 	scope_stack := stack.make_stack(^ast.AST_Node, context.temp_allocator)
@@ -262,9 +266,10 @@ parse_program :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ast.AS
 		// case tokens.For:  // TODO: consider for loops
 
 		case tokens.Open_Bracket:
-			items := make([dynamic]^ast.AST_Node)
+			items_ptr := new([dynamic]^ast.AST_Node, arena)
+			items_ptr^ = make([dynamic]^ast.AST_Node, arena)
 			new_block: ast.AST_Node = ast.Block {
-				items = &items,
+				items = items_ptr,
 			}
 			add_statement(current_scope, &new_block)
 
@@ -275,7 +280,7 @@ parse_program :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ast.AS
 			}
 			stack.pop(&scope_stack)
 		case tokens.Identifier:
-			rollback_token(tokenizer)
+			unget_token(tokenizer, token) // put the whole token back
 			expr := parse_expression(tokenizer, arena)
 			add_statement(current_scope, expr)
 		}

@@ -47,10 +47,9 @@ is_ident_char :: proc(r: rune) -> bool {
 	return unicode.is_alpha(r) || unicode.is_digit(r) || r == '_'
 }
 
-rollback_token :: proc(tokenizer: ^Tokenizer) {
-	if tokenizer.cursor > 0 {
-		tokenizer.cursor -= 1
-	}
+unget_token :: proc(tokenizer: ^Tokenizer, token: tokens.Token) {
+	tokenizer.peeked_token = token
+	tokenizer.has_peeked = true
 }
 
 peek_next :: proc(tokenizer: ^Tokenizer) -> (result: rune, ok: bool) #optional_ok {
@@ -73,7 +72,6 @@ cleanup_temp_alloc :: proc(result: tokens.Token) -> tokens.Token {
 	return result
 }
 
-@(deferred_out = cleanup_temp_alloc)
 scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> tokens.Token {
 	skip_whitespace_and_comments(tokenizer)
 
