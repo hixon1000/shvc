@@ -29,7 +29,7 @@ Fn_Decl :: struct {
 	name:     string,
 	args:     ^[dynamic]Type_Pair,
 	ret_type: stock_types.Types,
-	body:     Block,
+	body:     ^Block,
 }
 
 Struct_Decl :: struct {
@@ -40,7 +40,7 @@ Struct_Decl :: struct {
 If_Stmt :: struct {
 	// TODO: think of many branches
 	condition: ^AST_Node,
-	body:      Block,
+	body:      ^Block,
 }
 
 For_Loop :: struct {
@@ -48,7 +48,7 @@ For_Loop :: struct {
 	init: ^AST_Node,
 	cond: ^AST_Node,
 	step: ^AST_Node,
-	body: Block,
+	body: ^Block,
 }
 
 Identifier :: struct {
@@ -62,7 +62,7 @@ Literal :: struct {
 
 Binary_Op :: struct {
 	left:  ^AST_Node,
-	op:    tokens.Token, // this might cause cyclic deps issue
+	op:    tokens.Token,
 	right: ^AST_Node,
 }
 

@@ -30,6 +30,9 @@ inject_src :: proc(tokenizer: ^Tokenizer, src: string) {
 
 // return rune at cursor
 peek :: proc(tokenizer: ^Tokenizer) -> rune {
+	if is_at_end(tokenizer) {
+		panic("peek failed") // TODO: actual error handling
+	}
 	return tokenizer.source[tokenizer.cursor]
 }
 
@@ -67,13 +70,10 @@ peek_next :: proc(tokenizer: ^Tokenizer) -> (result: rune, ok: bool) #optional_o
 }
 
 
-cleanup_temp_alloc :: proc(result: tokens.Token) -> tokens.Token {
-	free_all(context.temp_allocator)
-	return result
-}
-
 scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> tokens.Token {
-	skip_whitespace_and_comments(tokenizer)
+	if !skip_whitespace_and_comments(tokenizer) {
+		panic("unterminated block comment")
+	}
 
 	if is_at_end(tokenizer) {
 		return tokens.Eof{}
@@ -86,10 +86,11 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 		advance(tokenizer)
 		return tokens.Colon{}
 	case '-':
-		if n, ok := peek_next(tokenizer); ok && n == '>' { 	// ->
+		if n, ok := peek_next(tokenizer); ok && n == '>' {
 			advance(tokenizer, 2)
 			return tokens.Arrow{}
 		}
+		advance(tokenizer)
 		return tokens.Minus{}
 	case '^':
 		advance(tokenizer)
@@ -104,6 +105,12 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 		}
 		advance(tokenizer)
 		return tokens.Assign{}
+	case '!':
+		if n, ok := peek_next(tokenizer); ok && n == '=' {
+			advance(tokenizer, 2)
+			return tokens.Not_Equal{}
+		}
+		panic("unexpected character: !")
 	case ',':
 		advance(tokenizer)
 		return tokens.Comma{}
@@ -290,41 +297,49 @@ skip_whitespace_and_comments :: proc(tokenizer: ^Tokenizer) -> bool {
 	for !is_at_end(tokenizer) {
 		c := peek(tokenizer)
 
-		// whitespace deal
 		if unicode.is_white_space(c) {
 			advance(tokenizer)
 			continue
 		}
 
-		// comment handling
 		if c == '/' {
 			next, ok := peek_next(tokenizer)
 			if !ok do break
 
 			if next == '/' {
-				// single line comment: skip until newline or end of file
 				for !is_at_end(tokenizer) && peek(tokenizer) != '\n' {
 					advance(tokenizer)
 				}
 				continue
-			} else if next == '*' {
-				// multi line comment skip until */
+			}
+
+			if next == '*' {
 				advance(tokenizer, 2)
+
+				closed := false
 				for !is_at_end(tokenizer) {
 					curr := peek(tokenizer)
 					nxt, nxt_ok := peek_next(tokenizer)
+
 					if curr == '*' && nxt_ok && nxt == '/' {
 						advance(tokenizer, 2)
+						closed = true
 						break
 					}
+
 					advance(tokenizer)
 				}
+
+				if !closed {
+					return false
+				}
+
 				continue
 			}
 		}
 
-		// if its not a whitespace or comment then we are done
 		break
 	}
+
 	return true
 }
