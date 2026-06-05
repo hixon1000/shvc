@@ -147,25 +147,67 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 	operator_stack := stack.make_stack(tokens.Token, context.temp_allocator)
 	operand_stack := stack.make_stack(^ast.AST_Node, context.temp_allocator)
 
+	open_paren_count := 0
+
 	outer: for {
 		token := peek_token(tokenizer, arena)
 
 		#partial switch _ in token {
 		// hitting statmenet boundry
-		case tokens.Semi_Colon,
-		     tokens.Close_Bracket,
-		     tokens.Open_Bracket,
-		     tokens.Comma,
-		     tokens.Close_Paren:
+		case tokens.Semi_Colon, tokens.Close_Bracket, tokens.Open_Bracket, tokens.Comma:
 			// very much needed as odin thinks break in switch is fallthrough breaker
 			// but this one doesnt have fallthrough so we need to labeled break
 			break outer
+		case tokens.Close_Paren:
+			if open_paren_count == 0 {
+				break outer
+			}
 		}
 
 		token = next_token(tokenizer, arena)
 
 		#partial switch t in token {
-		case tokens.Identifier, tokens.Int_Literal, tokens.String_Literal:
+		case tokens.Identifier:
+			next := peek_token(tokenizer, arena)
+			if _, is_call := next.(tokens.Open_Paren); is_call {
+				// eat the (
+				next_token(tokenizer, arena)
+
+				call_node := new(ast.AST_Node, arena)
+				args_list := new([dynamic]^ast.AST_Node, arena)
+				args_list^ = make([dynamic]^ast.AST_Node, arena)
+
+				// loop and parse , args until hitting close paren
+				if _, empty := peek_token(tokenizer, arena).(tokens.Close_Paren); !empty {
+					for {
+						arg_expr := parse_expression(tokenizer, arena)
+						append(args_list, arg_expr)
+
+						sep := next_token(tokenizer, arena)
+						#partial switch _ in sep {
+						case tokens.Comma:
+							continue
+						case tokens.Close_Paren:
+							break
+						case:
+							panic("expected ',' or ')' in argument list")
+						}
+						break
+					}
+				} else {
+					next_token(tokenizer, arena) // consume empty )
+				}
+
+				call_node^ = ast.Call {
+					target = create_leaf_node(token, arena), // token is the identifier
+					args   = args_list,
+				}
+				stack.push(&operand_stack, call_node)
+			} else {
+				stack.push(&operand_stack, create_leaf_node(token, arena))
+			}
+
+		case tokens.Int_Literal, tokens.String_Literal:
 			stack.push(&operand_stack, create_leaf_node(token, arena))
 		case tokens.Ampersand, tokens.Caret:
 			// unary opts
@@ -200,9 +242,11 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 
 			stack.push(&operator_stack, token)
 		case tokens.Open_Paren:
+			open_paren_count += 1
 			stack.push(&operator_stack, token)
 
 		case tokens.Close_Paren:
+			open_paren_count -= 1
 			found_open := false
 
 			for !stack.is_empty(&operator_stack) {
@@ -220,6 +264,7 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 			if !found_open {
 				panic("unmatched closing parenthesis")
 			}
+
 		}
 	}
 

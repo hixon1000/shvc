@@ -17,6 +17,10 @@ Program :: struct {
 	statements: Block,
 }
 
+Call :: struct {
+	target: ^AST_Node,
+	args:   ^[dynamic]^AST_Node,
+}
 
 Var_Decl :: struct {
 	name:      string,
@@ -74,6 +78,7 @@ Unary_Op :: struct {
 AST_Node :: union {
 	Program,
 	Block,
+	Call,
 	Var_Decl,
 	Fn_Decl,
 	Struct_Decl,
