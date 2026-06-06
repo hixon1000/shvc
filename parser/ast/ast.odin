@@ -43,7 +43,7 @@ Struct_Decl :: struct {
 
 If_Stmt :: struct {
 	condition: ^AST_Node,
-	body:      ^AST_Node, // usually a block, may be a single statement for `do`
+	body:      ^AST_Node, // usually a block, may be a single statement for do
 	else_stmt: ^AST_Node, // can be nil, another If_Stmt, or Block
 }
 
