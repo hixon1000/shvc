@@ -234,6 +234,10 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 			return tokens.Return{}
 		case "if":
 			return tokens.If{}
+		case "else":
+			return tokens.Else{}
+		case "do":
+			return tokens.Do{}
 		case "struct":
 			return tokens.Struct{}
 		case "for":

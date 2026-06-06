@@ -33,6 +33,8 @@ Mut :: struct {}
 Fn :: struct {}
 Return :: struct {}
 If :: struct {}
+Do :: struct {}
+Else :: struct {}
 Struct :: struct {}
 For :: struct {}
 Defer :: struct {}
@@ -91,6 +93,8 @@ Token :: union {
 	Fn,
 	Return,
 	If,
+  Else,
+  Do,
 	Struct,
 	For,
 	Identifier,

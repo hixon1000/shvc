@@ -104,13 +104,19 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 
 	case ast.If_Stmt:
 		fmt.println("If_Stmt:")
-		print_node(v.condition, indent + 1)
-		if v.body != nil && v.body.items != nil {
+
+		print_indent(indent + 1)
+		fmt.println("Condition:")
+		print_node(v.condition, indent + 2)
+
+		print_indent(indent + 1)
+		fmt.println("Body:")
+		print_node(v.body, indent + 2)
+
+		if v.else_stmt != nil {
 			print_indent(indent + 1)
-			fmt.println("Body:")
-			for stmt in v.body.items^ {
-				print_node(stmt, indent + 2)
-			}
+			fmt.println("Else:")
+			print_node(v.else_stmt, indent + 2)
 		}
 
 	case ast.For_Loop:

@@ -42,9 +42,9 @@ Struct_Decl :: struct {
 }
 
 If_Stmt :: struct {
-	// TODO: think of many branches
 	condition: ^AST_Node,
-	body:      ^Block,
+	body:      ^AST_Node, // usually a block, may be a single statement for `do`
+	else_stmt: ^AST_Node, // can be nil, another If_Stmt, or Block
 }
 
 Defer_Stmt :: struct {
