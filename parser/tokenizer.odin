@@ -114,6 +114,9 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 	case ',':
 		advance(tokenizer)
 		return tokens.Comma{}
+  case '?':
+    advance(tokenizer)
+    return tokens.Question{}
 	case ';':
 		advance(tokenizer)
 		return tokens.Semi_Colon{}

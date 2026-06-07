@@ -17,6 +17,7 @@ Equal :: struct {} // ==
 Not_Equal :: struct {} // !=
 Less :: struct {} // <
 Greater :: struct {} // >
+Question :: struct {} // ?
 
 // brackets
 Open_Paren :: struct {} // (
@@ -63,6 +64,7 @@ Token :: union {
 	Arrow,
 	Ampersand,
 	Comma,
+  Question,
 
 	// unary
 	Caret,

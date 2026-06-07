@@ -22,11 +22,18 @@ Call :: struct {
 	args:   ^[dynamic]^AST_Node,
 }
 
+Var_Init_Kind :: enum {
+	Zero, // val a: i32
+	Expr, // val a: i32 = something
+	Undef, // val a: i32 = ?
+}
+
 Var_Decl :: struct {
 	name:      string,
 	is_mut:    bool,
 	type_info: stock_types.Types,
 	init_expr: ^AST_Node,
+	init_kind: Var_Init_Kind,
 }
 
 Fn_Decl :: struct {
@@ -46,6 +53,28 @@ If_Stmt :: struct {
 	body:      ^AST_Node, // usually a block, may be a single statement for do
 	else_stmt: ^AST_Node, // can be nil, another If_Stmt, or Block
 }
+
+Array_Literal :: struct {
+	items: ^[dynamic]^AST_Node,
+}
+
+Index_Expr :: struct {
+	target: ^AST_Node,
+	index:  ^AST_Node,
+}
+
+Slice_Expr :: struct {
+	target: ^AST_Node,
+
+	// nil -> omitted
+	// a[:]   => start=nil, end=nil
+	// a[i:]  => start=i, end=nil
+	// a[:j]  => start=nil, end=j
+	// a[i:j] => start=i, end=j
+	start:  ^AST_Node,
+	end:    ^AST_Node,
+}
+
 
 Defer_Stmt :: struct {
 	stmt: ^AST_Node,
@@ -92,6 +121,9 @@ AST_Node :: union {
 	Fn_Decl,
 	Struct_Decl,
 	If_Stmt,
+	Array_Literal,
+	Index_Expr,
+	Slice_Expr,
 	Defer_Stmt,
 	Return_Stmt,
 	For_Loop,

@@ -455,11 +455,14 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 		token := peek_token(tokenizer, arena)
 
 		#partial switch _ in token {
-		// hitting statmenet boundry
-		case tokens.Semi_Colon, tokens.Close_Bracket, tokens.Open_Bracket, tokens.Comma:
-			// very much needed as odin thinks break in switch is fallthrough breaker
-			// but this one doesnt have fallthrough so we need to labeled break
+		case tokens.Semi_Colon, tokens.Close_Bracket, tokens.Comma, tokens.Close_SB:
 			break outer
+
+		case tokens.Open_Bracket:
+			if expecting_op {
+				break outer
+			}
+
 		case tokens.Close_Paren:
 			if open_paren_count == 0 {
 				break outer
@@ -478,6 +481,8 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 			}
 
 			next := peek_token(tokenizer, arena)
+			operand: ^ast.AST_Node
+
 			if _, is_call := next.(tokens.Open_Paren); is_call {
 				// eat the (
 				next_token(tokenizer, arena)
@@ -486,7 +491,6 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 				args_list := new([dynamic]^ast.AST_Node, arena)
 				args_list^ = make([dynamic]^ast.AST_Node, arena)
 
-				// loop and parse , args until hitting close paren
 				if _, empty := peek_token(tokenizer, arena).(tokens.Close_Paren); !empty {
 					for {
 						arg_expr := parse_expression(tokenizer, arena)
@@ -504,17 +508,22 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 						break
 					}
 				} else {
-					next_token(tokenizer, arena) // consume empty )
+					next_token(tokenizer, arena)
 				}
 
 				call_node^ = ast.Call {
-					target = create_leaf_node(token, arena), // token is the identifier
+					target = create_leaf_node(token, arena),
 					args   = args_list,
 				}
-				stack.push(&operand_stack, call_node)
+
+				operand = call_node
 			} else {
-				stack.push(&operand_stack, create_leaf_node(token, arena))
+				operand = create_leaf_node(token, arena)
 			}
+
+			operand = parse_postfix_expr(tokenizer, arena, operand)
+
+			stack.push(&operand_stack, operand)
 			expecting_op = true
 
 		case tokens.Int_Literal, tokens.String_Literal:
@@ -522,8 +531,13 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 				unget_token(tokenizer, token)
 				break outer
 			}
-			stack.push(&operand_stack, create_leaf_node(token, arena))
+
+			operand := create_leaf_node(token, arena)
+			operand = parse_postfix_expr(tokenizer, arena, operand)
+
+			stack.push(&operand_stack, operand)
 			expecting_op = true
+
 		case tokens.Ampersand, tokens.Caret:
 			// unary opts
 			if expecting_op {
@@ -599,6 +613,18 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 			}
 			expecting_op = true // closed paren acts like a completed operand
 
+		case tokens.Open_Bracket:
+			if expecting_op {
+				unget_token(tokenizer, token)
+				break outer
+			}
+
+			operand := parse_array_literal(tokenizer, arena)
+			operand = parse_postfix_expr(tokenizer, arena, operand)
+
+			stack.push(&operand_stack, operand)
+			expecting_op = true
+
 		case:
 			// if we see keywords or tokens we have no idea what it is
 			// we should stop parsing now
@@ -631,6 +657,104 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 
 	return result
 }
+
+parse_postfix_expr :: proc(
+	tokenizer: ^Tokenizer,
+	arena: runtime.Allocator,
+	base: ^ast.AST_Node,
+) -> ^ast.AST_Node {
+	result := base
+
+	for {
+		next := peek_token(tokenizer, arena)
+
+		#partial switch _ in next {
+		case tokens.Open_SB:
+			next_token(tokenizer, arena) // consume [
+
+			// forms
+			// a[i]
+			// a[:]
+			// a[i:]
+			// a[:j]
+			// a[i:j]
+
+			start: ^ast.AST_Node = nil
+			end: ^ast.AST_Node = nil
+
+			if _, has_colon_first := peek_token(tokenizer, arena).(tokens.Colon); has_colon_first {
+				// a[:] or a[:j]
+				next_token(tokenizer, arena) // consume :
+
+				if _, closes := peek_token(tokenizer, arena).(tokens.Close_SB); !closes {
+					end = parse_expression(tokenizer, arena)
+				}
+
+				if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
+					panic("expected ']' after slice expression")
+				}
+
+				node := new(ast.AST_Node, arena)
+				node^ = ast.Slice_Expr {
+					target = result,
+					start  = nil,
+					end    = end,
+				}
+
+				result = node
+				continue
+			}
+
+			// otherwise
+			// a[i]
+			// a[i:]
+			// a[i:j]
+			start = parse_expression(tokenizer, arena)
+
+			if _, has_colon := peek_token(tokenizer, arena).(tokens.Colon); has_colon {
+				next_token(tokenizer, arena) // consume ':'
+
+				if _, closes := peek_token(tokenizer, arena).(tokens.Close_SB); !closes {
+					end = parse_expression(tokenizer, arena)
+				}
+
+				if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
+					panic("expected ']' after slice expression")
+				}
+
+				node := new(ast.AST_Node, arena)
+				node^ = ast.Slice_Expr {
+					target = result,
+					start  = start,
+					end    = end,
+				}
+
+				result = node
+				continue
+			}
+
+			// Plain index.
+			if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
+				panic("expected ']' after index expression")
+			}
+
+			node := new(ast.AST_Node, arena)
+			node^ = ast.Index_Expr {
+				target = result,
+				index  = start,
+			}
+
+			result = node
+			continue
+
+		case:
+			return result
+		}
+	}
+
+	return result
+}
+
 
 // name ( args ) -> type
 // args as in name : type , name : type , ...
@@ -790,6 +914,70 @@ parse_type :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> types.Typ
 		elem_type := parse_type(tokenizer, arena)
 		return types.Pointer{elem = new_clone(elem_type, arena)}
 
+	case tokens.Open_SB:
+		count_kind := types.Array_Count_Kind.Fixed
+		count := 0
+
+		next := peek_token(tokenizer, arena)
+
+		#partial switch nt in next {
+		case tokens.Close_SB:
+			// []i32
+			next_token(tokenizer, arena)
+			count_kind = .Slice
+
+		case tokens.Question:
+			// [?]i32
+			next_token(tokenizer, arena)
+
+			if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
+				panic("expected ']' after '?' in array type")
+			}
+
+			count_kind = .Infer
+
+		case tokens.Identifier:
+			// [dynamic]i32
+			if nt.content == "dynamic" {
+				next_token(tokenizer, arena)
+
+				if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
+					panic("expected ']' after dynamic in array type")
+				}
+
+				count_kind = .Dynamic
+			} else {
+				panic("expected array count, '?', 'dynamic', or ']'")
+			}
+
+		case tokens.Int_Literal:
+			// [3]i32
+			next_token(tokenizer, arena)
+
+			if nt.content < 0 {
+				panic("array count cannot be negative")
+			}
+
+			count = int(nt.content)
+
+			if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
+				panic("expected ']' after array count")
+			}
+
+			count_kind = .Fixed
+
+		case:
+			panic("expected array count, '?', 'dynamic', or ']'")
+		}
+
+		elem_type := parse_type(tokenizer, arena)
+
+		return types.Array {
+			count_kind = count_kind,
+			count = count,
+			elem = new_clone(elem_type, arena),
+		}
+
 	case tokens.Identifier:
 		return parse_type_from_identifier(t.content)
 
@@ -797,6 +985,49 @@ parse_type :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> types.Typ
 		panic("expected a valid type identifier or type modifier")
 	}
 }
+
+parse_array_literal :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
+	// opening { should have been consumed
+
+	items_ptr := new([dynamic]^ast.AST_Node, arena)
+	items_ptr^ = make([dynamic]^ast.AST_Node, arena)
+
+	if _, empty := peek_token(tokenizer, arena).(tokens.Close_Bracket); empty {
+		next_token(tokenizer, arena)
+	} else {
+		for {
+			item := parse_expression(tokenizer, arena)
+			append(items_ptr, item)
+
+			sep := next_token(tokenizer, arena)
+
+			#partial switch _ in sep {
+			case tokens.Comma:
+				// allow trailing comma
+				if _, is_end := peek_token(tokenizer, arena).(tokens.Close_Bracket); is_end {
+					next_token(tokenizer, arena)
+					break
+				}
+				continue
+
+			case tokens.Close_Bracket:
+				break
+
+			case:
+				panic("expected ',' or '}' in array literal")
+			}
+
+			break
+		}
+	}
+
+	node := new(ast.AST_Node, arena)
+	node^ = ast.Array_Literal {
+		items = items_ptr,
+	}
+	return node
+}
+
 
 parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
 	token := next_token(tokenizer, arena)
@@ -825,13 +1056,21 @@ parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.
 	// type parsing
 	var_type := parse_type(tokenizer, arena)
 
-	// expect a =
-	if _, ok := next_token(tokenizer, arena).(tokens.Assign); !ok {
-		panic("expected '=' after type specification")
-	}
+	// optional init
+	init_kind := ast.Var_Init_Kind.Zero
+	value_expr: ^ast.AST_Node = nil
 
-	// parse assignment
-	value_expr := parse_expression(tokenizer, arena)
+	if _, has_assign := peek_token(tokenizer, arena).(tokens.Assign); has_assign {
+		next_token(tokenizer, arena) // consume =
+
+		if _, is_question := peek_token(tokenizer, arena).(tokens.Question); is_question {
+			next_token(tokenizer, arena) // consume ?
+			init_kind = .Undef
+		} else {
+			value_expr = parse_expression(tokenizer, arena)
+			init_kind = .Expr
+		}
+	}
 
 	// make node
 	node := new(ast.AST_Node, arena)
@@ -839,6 +1078,7 @@ parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.
 		name      = name_tok.content,
 		type_info = var_type,
 		is_mut    = is_mutable,
+		init_kind = init_kind,
 		init_expr = value_expr,
 	}
 

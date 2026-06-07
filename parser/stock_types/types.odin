@@ -12,6 +12,21 @@ Integer64 :: struct {}
 
 String :: struct {}
 
+Array_Count_Kind :: enum {
+	Fixed, // [3]i32
+	Infer, // [?]i32
+	Dynamic, // [dynamic]i32
+	Slice, // []i32
+}
+
+Array :: struct {
+	count_kind: Array_Count_Kind,
+	// only care about this when it is .Fixed
+	// otherwise this can just be 0
+	count:      int,
+	elem:       ^Types,
+}
+
 Pointer :: struct {
 	elem: ^Types,
 }
@@ -28,6 +43,7 @@ Types :: union {
 	Integer32,
 	Integer64,
 	String,
+	Array,
 	Pointer,
 	Custom_Type,
 }

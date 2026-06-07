@@ -97,9 +97,21 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 		fmt.printf("Literal: %s (Type: %v)\n", v.value, v.type)
 
 	case ast.Var_Decl:
-		fmt.printf("Var_Decl: %s (Mut: %t, Type: %v)\n", v.name, v.is_mut, v.type_info)
+		fmt.printf("Var_Decl: %s\n", v.name)
+
+		print_indent(indent + 1)
+		fmt.printf("Mut: %t\n", v.is_mut)
+
+		print_indent(indent + 1)
+		fmt.printf("Kind: %s\n", v.init_kind)
+
+		print_indent(indent + 1)
+		fmt.printf("Type: %v\n", v.type_info)
+
 		if v.init_expr != nil {
-			print_node(v.init_expr, indent + 1)
+			print_indent(indent + 1)
+			fmt.println("Init:")
+			print_node(v.init_expr, indent + 2)
 		}
 
 	case ast.If_Stmt:
@@ -156,5 +168,39 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 		if v.expr != nil {
 			print_node(v.expr, indent + 1)
 		}
+
+	case ast.Array_Literal:
+		fmt.println("Array_Literal:")
+		if v.items != nil {
+			for item in v.items^ {
+				print_node(item, indent + 1)
+			}
+		}
+
+	case ast.Index_Expr:
+		fmt.println("Index_Expr:")
+
+		print_indent(indent + 1)
+		fmt.println("Target:")
+		print_node(v.target, indent + 2)
+
+		print_indent(indent + 1)
+		fmt.println("Index:")
+		print_node(v.index, indent + 2)
+
+	case ast.Slice_Expr:
+		fmt.println("Slice_Expr:")
+
+		print_indent(indent + 1)
+		fmt.println("Target:")
+		print_node(v.target, indent + 2)
+
+		print_indent(indent + 1)
+		fmt.println("Start:")
+		print_node(v.start, indent + 2)
+
+		print_indent(indent + 1)
+		fmt.println("End:")
+		print_node(v.end, indent + 2)
 	}
 }
