@@ -681,6 +681,8 @@ parse_type_from_identifier :: proc(name: string) -> types.Types {
 	switch name {
 	case "unit":
 		return types.Unit{}
+	case "bool":
+		return types.Bool{}
 	case "int":
 		return types.Integer{}
 	case "i8":
@@ -693,9 +695,8 @@ parse_type_from_identifier :: proc(name: string) -> types.Types {
 		return types.String{}
 	}
 
-	panic("unknown type")
+	return types.Custom_Type{name = name}
 }
-
 
 // name { fieldname : type , fieldname : type , }
 // optional trailing comma
