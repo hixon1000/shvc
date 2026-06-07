@@ -150,5 +150,11 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 	case ast.Defer_Stmt:
 		fmt.println("Defer_Stmt:")
 		print_node(v.stmt, indent + 1)
+
+	case ast.Return_Stmt:
+		fmt.println("Return_Stmt:")
+		if v.expr != nil {
+			print_node(v.expr, indent + 1)
+		}
 	}
 }

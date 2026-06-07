@@ -51,6 +51,11 @@ Defer_Stmt :: struct {
 	stmt: ^AST_Node,
 }
 
+Return_Stmt :: struct {
+	// may be nil
+	expr: ^AST_Node,
+}
+
 For_Loop :: struct {
 	// TODO: consider this
 	init: ^AST_Node,
@@ -88,6 +93,7 @@ AST_Node :: union {
 	Struct_Decl,
 	If_Stmt,
 	Defer_Stmt,
+	Return_Stmt,
 	For_Loop,
 	Identifier,
 	Literal,

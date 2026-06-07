@@ -256,6 +256,26 @@ parse_statement_into_current_scope :: proc(
 			add_statement_to_block(current_scope, defer_node)
 		}
 
+	case tokens.Return:
+		ret_node := new(ast.AST_Node, arena)
+		expr: ^ast.AST_Node = nil
+
+		// see if theres an expr following return
+		next_tok := peek_token(tokenizer, arena)
+		#partial switch _ in next_tok {
+		case tokens.Semi_Colon, tokens.Close_Bracket, tokens.Eof:
+		// remains nil
+		case:
+			// got an expression to evaluate
+			expr = parse_expression(tokenizer, arena)
+		}
+
+		ret_node^ = ast.Return_Stmt {
+			expr = expr,
+		}
+
+		add_statement_to_block(current_scope, ret_node)
+
 	case tokens.If:
 		if_node := parse_if_statement(tokenizer, arena)
 		add_statement_to_block(current_scope, if_node)
@@ -631,7 +651,7 @@ parse_fn_signiture :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 	if _, ptok := peek_token(tokenizer, arena).(tokens.Close_Paren); ptok {
 		next_token(tokenizer, arena)
 	} else {
-		for {
+		arg_loop: for {
 			arg_name_tok, idok := next_token(tokenizer, arena).(tokens.Identifier)
 			if !idok do panic("expected argument name")
 
@@ -656,7 +676,7 @@ parse_fn_signiture :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 			case tokens.Comma:
 				continue
 			case tokens.Close_Paren:
-				break
+				break arg_loop
 			case:
 				panic("expected ',' or ')'")
 			}
