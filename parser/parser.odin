@@ -545,6 +545,31 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 				break outer
 			}
 			stack.push(&operator_stack, token)
+
+		case tokens.As, tokens.As_Bang:
+			if !expecting_op {
+				panic("unexpected cast operator without left-hand side expression")
+			}
+
+			// pop the lhs we casting rn
+			left, ok := stack.pop(&operand_stack)
+			if !ok do panic("missing left operand for cast")
+
+			// we gotta see what type it is dont we
+			target_type := parse_type(tokenizer, arena)
+
+			_, is_reinterpret := token.(tokens.As_Bang)
+
+			node := new(ast.AST_Node, arena)
+			node^ = ast.Cast_Expr {
+				expr           = left,
+				target_type    = target_type,
+				is_reinterpret = is_reinterpret,
+			}
+
+			stack.push(&operand_stack, node)
+			expecting_op = true // cast expression acts as a completed operand phrase
+
 		// expecting_op remains false here cuz unary ops
 		case tokens.Assign,
 		     tokens.Plus,

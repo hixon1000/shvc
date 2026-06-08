@@ -202,5 +202,15 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 		print_indent(indent + 1)
 		fmt.println("End:")
 		print_node(v.end, indent + 2)
+
+	case ast.Cast_Expr:
+		fmt.println("Cast_Expr:")
+		print_indent(indent + 1)
+		fmt.printf("Target_Type: %v\n", v.target_type)
+		print_indent(indent + 1)
+		fmt.printf("Is_Reinterpret: %t\n", v.is_reinterpret)
+		print_indent(indent + 1)
+		fmt.println("Expr:")
+		print_node(v.expr, indent + 2)
 	}
 }

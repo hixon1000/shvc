@@ -42,6 +42,8 @@ Defer :: struct {}
 In :: struct {}
 Break :: struct {}
 Continue :: struct {}
+As :: struct {}
+As_Bang :: struct {}
 
 Identifier :: struct {
 	content: string, // distinct also works
@@ -64,7 +66,7 @@ Token :: union {
 	Arrow,
 	Ampersand,
 	Comma,
-  Question,
+	Question,
 
 	// unary
 	Caret,
@@ -95,8 +97,8 @@ Token :: union {
 	Fn,
 	Return,
 	If,
-  Else,
-  Do,
+	Else,
+	Do,
 	Struct,
 	For,
 	Identifier,
@@ -104,6 +106,8 @@ Token :: union {
 	In,
 	Break,
 	Continue,
+	As,
+	As_Bang,
 
 	// numbers
 	Int_Literal,

@@ -75,6 +75,11 @@ Slice_Expr :: struct {
 	end:    ^AST_Node,
 }
 
+Cast_Expr :: struct {
+	expr:           ^AST_Node,
+	target_type:    stock_types.Types,
+	is_reinterpret: bool,
+}
 
 Defer_Stmt :: struct {
 	stmt: ^AST_Node,
@@ -124,6 +129,7 @@ AST_Node :: union {
 	Array_Literal,
 	Index_Expr,
 	Slice_Expr,
+	Cast_Expr,
 	Defer_Stmt,
 	Return_Stmt,
 	For_Loop,

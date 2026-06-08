@@ -2,57 +2,71 @@ package stack
 
 import "base:runtime"
 
-Node :: struct($T: typeid) {
-	value: T,
-	next:  ^Node(T),
-}
-
 Stack :: struct($T: typeid) {
-	top:       ^Node(T),
+	data:      []T,
 	len:       int,
 	allocator: runtime.Allocator,
 }
 
 make_stack :: proc($T: typeid, allocator: runtime.Allocator) -> Stack(T) {
-	return Stack(T){allocator = allocator}
+	return Stack(T){data = nil, len = 0, allocator = allocator}
 }
 
 push :: proc(s: ^Stack($T), val: T) {
-	new_node := new(Node(T), s.allocator)
-	new_node.value = val
-	new_node.next = s.top
+	if s.len == len(s.data) {
+		stack_grow(s)
+	}
 
-	s.top = new_node
+	s.data[s.len] = val
 	s.len += 1
 }
 
 peek :: proc(s: ^Stack($T)) -> (T, bool) {
-	if s.top == nil {
+	if s.len == 0 {
 		return {}, false
 	}
-	return s.top.value, true
+
+	return s.data[s.len - 1], true
 }
 
 pop :: proc(s: ^Stack($T)) -> (val: T, ok: bool) {
-	if s.top == nil {
+	if s.len == 0 {
 		return {}, false
 	}
 
-	old_top := s.top
-	val = old_top.value
-	s.top = old_top.next
-
-	free(old_top, s.allocator) // cleanup
 	s.len -= 1
+	val = s.data[s.len]
+
 	return val, true
 }
 
 destroy_stack :: proc(s: ^Stack($T)) {
-	for s.top != nil {
-		pop(s)
+	if s.data != nil {
+		delete(s.data, s.allocator)
 	}
+
+	s.data = nil
+	s.len = 0
 }
 
 is_empty :: proc(s: ^Stack($T)) -> bool {
 	return s.len == 0
+}
+
+stack_grow :: proc(s: ^Stack($T)) {
+	old_cap := len(s.data)
+
+	new_cap := 8
+	if old_cap > 0 {
+		new_cap = old_cap * 2
+	}
+
+	new_data := make([]T, new_cap, s.allocator)
+
+	if s.data != nil {
+		copy(new_data[:s.len], s.data[:s.len])
+		delete(s.data, s.allocator)
+	}
+
+	s.data = new_data
 }
