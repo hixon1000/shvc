@@ -8,8 +8,13 @@ Stack :: struct($T: typeid) {
 	allocator: runtime.Allocator,
 }
 
-make_stack :: proc($T: typeid, allocator: runtime.Allocator) -> Stack(T) {
-	return Stack(T){data = nil, len = 0, allocator = allocator}
+// nobody is going to nest it more than 16 times right?
+make_stack :: proc($T: typeid, allocator: runtime.Allocator, capacity: int = 16) -> Stack(T) {
+	data: []T = nil
+	if capacity > 0 {
+		data = make([]T, capacity, allocator)
+	}
+	return Stack(T){data = data, len = 0, allocator = allocator}
 }
 
 push :: proc(s: ^Stack($T), val: T) {
