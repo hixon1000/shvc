@@ -1,0 +1,58 @@
+# Parser
+- [x] tokenizer
+- [x] parser structure
+- [x] operators (binary and unary, precedence, right-associative =)
+- [x] address-of (&) and pointer dereference (^) operators
+- [x] variable definition & mutation (val/mut)
+- [x] type annotations on variables (name : Type)
+- [x] zero init variable (default when no = present)
+- [x] undefined init variable (= ?)
+- [x] scope / block
+- [x] defer
+- [x] return
+- [x] array, slice & indexing
+- [x] full slice expressions (a[i:j], a[:], a[i:], a[:j])
+- [x] array literal ({ expr, ... })
+- [x] array type syntax: fixed [N]T, slice []T, dynamic [dynamic]T, infer [?]T
+- [ ] SOA
+- [x] pointer type syntax (^T)
+- [x] string and float literals
+- [x] function calls (including multi-argument)
+- [x] function declaration (fn) with arguments and optional return type (-> Type)
+- [x] struct definition
+- [ ] struct literals
+- [ ] struct alignment
+- [ ] bit packed structs
+- [ ] simd support
+- [ ] simd vector types
+- [x] custom type references (user-defined type names)
+- [x] if statements with branching else if
+- [x] single line if statements with do
+- [x] casting with as
+- [x] reinterpret cast with as!
+- [ ] distinct type alias
+- [ ] inline asm
+- [ ] volatile load / stores
+- [ ] atomics
+- [ ] multithreading
+- [ ] allocators
+- [ ] for loop, array iteration (with or w/o index), infinite loop
+- [ ] tagged unions 
+- [ ] c styled unions 
+- [ ] enum, with customizable backing types
+- [ ] bitfields
+- [ ] code module management 
+- [ ] namespace
+- [ ] tuples
+- [ ] traits & methods as syntax sugar to regular function calls
+- [ ] dynamic methods
+- [ ] generics
+- [ ] c foreign function interface
+- [ ] declarative macros
+- [ ] procedural macros
+
+# Analyzer
+- [ ] start working on it
+
+# Code Generation
+- [ ] start working on it
