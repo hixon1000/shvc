@@ -18,6 +18,7 @@ Not_Equal :: struct {} // !=
 Less :: struct {} // <
 Greater :: struct {} // >
 Question :: struct {} // ?
+Dot :: struct {} // .
 
 // brackets
 Open_Paren :: struct {} // (
@@ -44,6 +45,7 @@ Break :: struct {}
 Continue :: struct {}
 As :: struct {}
 As_Bang :: struct {}
+Trait :: struct {}
 
 Identifier :: struct {
 	content: string, // distinct also works
@@ -71,6 +73,7 @@ Token :: union {
 	Ampersand,
 	Comma,
 	Question,
+	Dot,
 
 	// unary
 	Caret,
@@ -112,6 +115,7 @@ Token :: union {
 	Continue,
 	As,
 	As_Bang,
+	Trait,
 
 	// numbers
 	Int_Literal,

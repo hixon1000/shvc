@@ -50,6 +50,7 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 		if v.args != nil {
 			for arg, i in v.args^ {
 				if i > 0 do fmt.print(", ")
+				if arg.is_mut do fmt.print("mut ")
 				fmt.printf("%s: %v", arg.name, arg.type)
 			}
 		}
@@ -80,6 +81,19 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 			}
 		}
 		fmt.println("]")
+
+	case ast.Trait_Decl:
+		fmt.printf("Trait_Decl: %s\n", v.name)
+
+		if v.methods != nil {
+			print_indent(indent + 1)
+			fmt.println("Methods:")
+
+			for method in v.methods^ {
+				method_node: ast.AST_Node = method
+				print_node(&method_node, indent + 2)
+			}
+		}
 
 	case ast.Binary_Op:
 		fmt.printf("Binary_Op: %v\n", v.op)
@@ -218,5 +232,24 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 		print_indent(indent + 1)
 		fmt.println("Expr:")
 		print_node(v.expr, indent + 2)
+
+	case ast.Field_Access:
+		fmt.println("Field_Access:")
+		print_node(v.target, indent + 1)
+		print_indent(indent + 1)
+		fmt.printf("Field: %s\n", v.field)
+
+	case ast.Method_Call:
+		fmt.println("Method_Call:")
+		print_node(v.target, indent + 1)
+		print_indent(indent + 1)
+		fmt.printf("Method: %s\n", v.method)
+		print_indent(indent + 1)
+		fmt.println("Arguments:")
+		if v.args != nil {
+			for arg in v.args^ {
+				print_node(arg, indent + 2)
+			}
+		}
 	}
 }

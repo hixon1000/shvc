@@ -5,8 +5,9 @@ import "../tokens"
 
 
 Type_Pair :: struct {
-	name: string, // TODO: think of namespacing
-	type: stock_types.Types,
+	name:   string, // TODO: think of namespacing
+	is_mut: bool,
+	type:   stock_types.Types,
 }
 
 Block :: struct {
@@ -46,6 +47,11 @@ Fn_Decl :: struct {
 Struct_Decl :: struct {
 	name:   string,
 	fields: ^[dynamic]Type_Pair,
+}
+
+Trait_Decl :: struct {
+	name:    string,
+	methods: ^[dynamic]Fn_Decl,
 }
 
 If_Stmt :: struct {
@@ -125,6 +131,17 @@ Unary_Op :: struct {
 	operand: ^AST_Node,
 }
 
+Field_Access :: struct {
+	target: ^AST_Node,
+	field:  string,
+}
+
+Method_Call :: struct {
+	target: ^AST_Node,
+	method: string,
+	args:   ^[dynamic]^AST_Node,
+}
+
 AST_Node :: union {
 	Program,
 	Block,
@@ -132,6 +149,7 @@ AST_Node :: union {
 	Var_Decl,
 	Fn_Decl,
 	Struct_Decl,
+	Trait_Decl,
 	If_Stmt,
 	Array_Literal,
 	Index_Expr,
@@ -146,4 +164,6 @@ AST_Node :: union {
 	String_Literal,
 	Binary_Op,
 	Unary_Op,
+	Field_Access,
+	Method_Call,
 }

@@ -45,7 +45,7 @@
 - [ ] code module management 
 - [ ] namespace
 - [ ] tuples
-- [ ] traits & methods as syntax sugar to regular function calls
+- [x] traits & methods as syntax sugar to regular function calls
 - [ ] dynamic methods
 - [ ] generics
 - [ ] c foreign function interface

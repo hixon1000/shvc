@@ -2,6 +2,7 @@ package parser
 
 import "ast"
 import "base:runtime"
+import "core:fmt"
 import "stack"
 import types "stock_types"
 import "tokens"
@@ -204,6 +205,10 @@ parse_statement_into_current_scope :: proc(
 
 		add_statement_to_block(current_scope, struct_node)
 
+	case tokens.Trait:
+		trait_decl := parse_trait_decl(tokenizer, arena)
+		add_statement_to_block(current_scope, trait_decl)
+
 	case tokens.Open_Bracket:
 		new_block := make_block(arena)
 		block_node := make_block_node(new_block, arena)
@@ -226,6 +231,7 @@ parse_statement_into_current_scope :: proc(
 	case tokens.Identifier,
 	     tokens.Int_Literal,
 	     tokens.String_Literal,
+	     tokens.Float_Literal,
 	     tokens.Open_Paren,
 	     tokens.Ampersand,
 	     tokens.Caret:
@@ -305,6 +311,7 @@ parse_single_statement_after_do :: proc(
 	case tokens.Identifier,
 	     tokens.Int_Literal,
 	     tokens.String_Literal,
+	     tokens.Float_Literal,
 	     tokens.Open_Paren,
 	     tokens.Ampersand,
 	     tokens.Caret:
@@ -701,6 +708,63 @@ parse_postfix_expr :: proc(
 		next := peek_token(tokenizer, arena)
 
 		#partial switch _ in next {
+		case tokens.Dot:
+			next_token(tokenizer, arena) // consume .
+
+			field_tok, ok := next_token(tokenizer, arena).(tokens.Identifier)
+			if !ok {
+				panic("expected identifier after '.'")
+			}
+
+			// method call expr.name()
+			if _, is_call := peek_token(tokenizer, arena).(tokens.Open_Paren); is_call {
+				next_token(tokenizer, arena) // consume (
+
+				args_list := new([dynamic]^ast.AST_Node, arena)
+				args_list^ = make([dynamic]^ast.AST_Node, arena)
+
+				if _, empty := peek_token(tokenizer, arena).(tokens.Close_Paren); !empty {
+					for {
+						arg_expr := parse_expression(tokenizer, arena)
+						append(args_list, arg_expr)
+
+						sep := next_token(tokenizer, arena)
+						#partial switch _ in sep {
+						case tokens.Comma:
+							continue
+						case tokens.Close_Paren:
+							break
+						case:
+							panic("expected ',' or ')' in method argument list")
+						}
+
+						break
+					}
+				} else {
+					next_token(tokenizer, arena) // consume )
+				}
+
+				node := new(ast.AST_Node, arena)
+				node^ = ast.Method_Call {
+					target = result,
+					method = field_tok.content,
+					args   = args_list,
+				}
+
+				result = node
+				continue
+			}
+
+			// plain field access via expr.name
+			node := new(ast.AST_Node, arena)
+			node^ = ast.Field_Access {
+				target = result,
+				field  = field_tok.content,
+			}
+
+			result = node
+			continue
+
 		case tokens.Open_SB:
 			next_token(tokenizer, arena) // consume [
 
@@ -715,7 +779,6 @@ parse_postfix_expr :: proc(
 			end: ^ast.AST_Node = nil
 
 			if _, has_colon_first := peek_token(tokenizer, arena).(tokens.Colon); has_colon_first {
-				// a[:] or a[:j]
 				next_token(tokenizer, arena) // consume :
 
 				if _, closes := peek_token(tokenizer, arena).(tokens.Close_SB); !closes {
@@ -744,7 +807,7 @@ parse_postfix_expr :: proc(
 			start = parse_expression(tokenizer, arena)
 
 			if _, has_colon := peek_token(tokenizer, arena).(tokens.Colon); has_colon {
-				next_token(tokenizer, arena) // consume ':'
+				next_token(tokenizer, arena) // consume :
 
 				if _, closes := peek_token(tokenizer, arena).(tokens.Close_SB); !closes {
 					end = parse_expression(tokenizer, arena)
@@ -765,7 +828,6 @@ parse_postfix_expr :: proc(
 				continue
 			}
 
-			// Plain index.
 			if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
 				panic("expected ']' after index expression")
 			}
@@ -795,9 +857,23 @@ parse_fn_signiture :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 	args_ptr := new([dynamic]ast.Type_Pair, arena)
 	args_ptr^ = make([dynamic]ast.Type_Pair, arena)
 	fn.args = args_ptr
-	name, _ := next_token(tokenizer, arena).(tokens.Identifier)
-	fn.name = name.content
 	fn.body = make_block(arena)
+
+	first_tok, idok := next_token(tokenizer, arena).(tokens.Identifier)
+	if !idok do panic("expected function or method name")
+
+	if _, has_dot := peek_token(tokenizer, arena).(tokens.Dot); has_dot {
+		next_token(tokenizer, arena) // consume .
+		method_tok, mok := next_token(tokenizer, arena).(tokens.Identifier)
+		if !mok do panic("expected method name after '.'")
+
+		// combine them into a single string identifier
+		// this sound like a bandaid solution
+		// TODO: reconsider
+		fn.name = fmt.aprintf("%s.%s", first_tok.content, method_tok.content, allocator = arena)
+	} else {
+		fn.name = first_tok.content
+	}
 
 	// consume (
 	if _, ntok := next_token(tokenizer, arena).(tokens.Open_Paren); !ntok {
@@ -808,26 +884,29 @@ parse_fn_signiture :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 		next_token(tokenizer, arena)
 	} else {
 		arg_loop: for {
-			arg_name_tok, idok := next_token(tokenizer, arena).(tokens.Identifier)
-			if !idok do panic("expected argument name")
+			// handle mut prefix
+			tok := next_token(tokenizer, arena)
+			is_arg_mut := false
+			if _, is_mut := tok.(tokens.Mut); is_mut {
+				is_arg_mut = true
+				tok = next_token(tokenizer, arena)
+			}
+
+			arg_name_tok, name_ok := tok.(tokens.Identifier)
+			if !name_ok do panic("expected argument name")
 
 			if _, colok := next_token(tokenizer, arena).(tokens.Colon); !colok {
 				panic("expected ':'")
 			}
 
-			arg_type_tok, nok := next_token(tokenizer, arena).(tokens.Identifier)
-			if !nok do panic("expected argument type")
+			arg_type := parse_type(tokenizer, arena)
 
 			append(
 				fn.args,
-				ast.Type_Pair {
-					name = arg_name_tok.content,
-					type = parse_type_from_identifier(arg_type_tok.content),
-				},
+				ast.Type_Pair{name = arg_name_tok.content, type = arg_type, is_mut = is_arg_mut},
 			)
 
 			sep := next_token(tokenizer, arena)
-
 			#partial switch _ in sep {
 			case tokens.Comma:
 				continue
@@ -842,15 +921,52 @@ parse_fn_signiture :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 	fn.ret_type = types.Unit{}
 
 	if _, arok := peek_token(tokenizer, arena).(tokens.Arrow); arok {
-		next_token(tokenizer, arena)
-
-		ret_tok, ok := next_token(tokenizer, arena).(tokens.Identifier)
-		if !ok do panic("expected return type")
-
-		fn.ret_type = parse_type_from_identifier(ret_tok.content)
+		next_token(tokenizer, arena) // consume ->
+		fn.ret_type = parse_type(tokenizer, arena)
 	}
 
 	return fn
+}
+
+parse_trait_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
+	name_tok, idok := next_token(tokenizer, arena).(tokens.Identifier)
+	if !idok do panic("expected trait name")
+
+	if _, obok := next_token(tokenizer, arena).(tokens.Open_Bracket); !obok {
+		panic("expected '{' after trait name")
+	}
+
+	methods_ptr := new([dynamic]ast.Fn_Decl, arena)
+	methods_ptr^ = make([dynamic]ast.Fn_Decl, arena)
+
+	for {
+		if _, cbok := peek_token(tokenizer, arena).(tokens.Close_Bracket); cbok {
+			next_token(tokenizer, arena) // consume }
+			break
+		}
+
+		tok := next_token(tokenizer, arena)
+
+		#partial switch _ in tok {
+		case tokens.Fn:
+			method_sig := parse_fn_signiture(tokenizer, arena)
+			append(methods_ptr, method_sig)
+
+		case tokens.Semi_Colon:
+			continue
+
+		case:
+			panic("expected method declaration or '}' inside trait body")
+		}
+	}
+
+	node := new(ast.AST_Node, arena)
+	node^ = ast.Trait_Decl {
+		name    = name_tok.content,
+		methods = methods_ptr,
+	}
+
+	return node
 }
 
 parse_type_from_identifier :: proc(name: string) -> types.Types {
@@ -942,6 +1058,7 @@ parse_struct_signiture :: proc(
 	return structure
 }
 
+// TODO: rewrite to NOT be recursive
 parse_type :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> types.Types {
 	token := next_token(tokenizer, arena)
 
