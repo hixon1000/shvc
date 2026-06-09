@@ -30,6 +30,7 @@
 - [x] single line if statements with do
 - [x] casting with as
 - [x] reinterpret cast with as!
+- [ ] hashmap
 - [ ] distinct type alias
 - [ ] inline asm
 - [ ] volatile load / stores
