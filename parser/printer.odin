@@ -167,7 +167,7 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 			fmt.println("For_Stmt (Each):")
 
 			print_indent(indent + 1)
-			fmt.printf("value: %s\n", v.iter_value_name)
+			fmt.printf("value: %s\n", v.iter_value_name.name)
 
 			if v.iter_index_name.name != "" {
 				print_indent(indent + 1)
