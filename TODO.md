@@ -40,9 +40,10 @@
 - [ ] atomics
 - [ ] multithreading
 - [ ] allocators
-- [ ] for loop, array iteration (with or w/o index), infinite loop
+- [x] for loop, array iteration (with or w/o index), infinite loop
+- [x] break & continue
+- [ ] labelled break & continue 
 - [ ] reverse iteration based for loop
-- [ ] labelled loops
 - [ ] custom iterators
 - [ ] tagged unions 
 - [ ] c styled unions 
