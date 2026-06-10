@@ -199,6 +199,11 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 
 	case ast.Struct_Literal:
 		fmt.println("Struct_Literal:")
+
+		print_indent(indent + 1)
+		fmt.println("Type:")
+		print_node(v.type, indent + 2)
+
 		print_indent(indent + 1)
 		fmt.println("Fields:")
 		if v.fields != nil {

@@ -70,6 +70,7 @@ Struct_Literal_Field :: struct {
 }
 
 Struct_Literal :: struct {
+	type:   ^AST_Node,
 	fields: ^[dynamic]Struct_Literal_Field,
 }
 

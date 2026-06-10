@@ -21,7 +21,21 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 
 		case tokens.Open_Bracket:
 			if expecting_op {
-				break outer
+				// typed literal found
+				// eat {
+				token = next_token(tokenizer, arena)
+
+				// get type node that is just parsed
+				type_node, ok := stack.pop(&operand_stack)
+				if !ok do panic("compiler error: expecting_op true but operand stack empty")
+
+				// parse content inside
+				literal_node := parse_typed_braced_literal(tokenizer, arena, type_node)
+
+				// back to the operand stack
+				stack.push(&operand_stack, literal_node)
+				expecting_op = true
+				continue outer
 			}
 
 		case tokens.Close_Paren:
