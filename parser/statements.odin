@@ -143,6 +143,16 @@ parse_statement_into_current_scope :: proc(
 
 		add_statement_to_block(current_scope, ret_node)
 
+	case tokens.Continue:
+		continue_node := new(ast.AST_Node, arena)
+		continue_node^ = ast.Continue_Stmt{}
+		add_statement_to_block(current_scope, continue_node)
+
+	case tokens.Break:
+		break_node := new(ast.AST_Node, arena)
+		break_node^ = ast.Break_Stmt{}
+		add_statement_to_block(current_scope, break_node)
+
 	case tokens.If:
 		if_node := parse_if_statement(tokenizer, arena)
 		add_statement_to_block(current_scope, if_node)
@@ -174,6 +184,16 @@ parse_single_statement_after_do :: proc(
 	case tokens.Val, tokens.Mut:
 		unget_token(tokenizer, token)
 		return parse_var_decl(tokenizer, arena)
+
+	case tokens.Continue:
+		node := new(ast.AST_Node, arena)
+		node^ = ast.Continue_Stmt{}
+		return node
+
+	case tokens.Break:
+		node := new(ast.AST_Node, arena)
+		node^ = ast.Break_Stmt{}
+		return node
 
 	case tokens.Defer:
 		defer_node := new(ast.AST_Node, arena)

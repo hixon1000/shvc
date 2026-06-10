@@ -106,6 +106,9 @@ Return_Stmt :: struct {
 	expr: ^AST_Node,
 }
 
+Continue_Stmt :: struct {}
+Break_Stmt :: struct {}
+
 For_Loop :: struct {
 	// TODO: consider this
 	init: ^AST_Node,
@@ -169,6 +172,8 @@ AST_Node :: union {
 	Cast_Expr,
 	Defer_Stmt,
 	Return_Stmt,
+  Continue_Stmt,
+  Break_Stmt,
 	For_Loop,
 	Identifier,
 	Int_Literal,

@@ -151,6 +151,12 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 			print_node(v.else_stmt, indent + 2)
 		}
 
+	case ast.Break_Stmt:
+		fmt.println("Break_Stmt")
+
+	case ast.Continue_Stmt:
+		fmt.println("Continue_Stmt")
+
 	case ast.For_Loop:
 		fmt.println("For_Loop:")
 		print_node(v.init, indent + 1)
