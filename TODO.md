@@ -2,6 +2,8 @@
 - [x] tokenizer
 - [x] parser structure
 - [x] operators (binary and unary, precedence, right-associative =)
+- [x] plus / minus assign (+= -=) operators
+- [ ] esoteric assignment operators (/=)
 - [x] address-of (&) and pointer dereference (^) operators
 - [x] variable definition & mutation (val/mut)
 - [x] type annotations on variables (name : Type)
@@ -30,6 +32,7 @@
 - [x] single line if statements with do
 - [x] casting with as
 - [x] reinterpret cast with as!
+- [ ] switch statements
 - [ ] hashmap
 - [ ] distinct type alias
 - [ ] inline asm
@@ -37,7 +40,11 @@
 - [ ] atomics
 - [ ] multithreading
 - [ ] allocators
-- [ ] for loop, array iteration (with or w/o index), infinite loop
+- [x] for loop, array iteration (with or w/o index), infinite loop
+- [x] break & continue
+- [ ] labelled break & continue 
+- [ ] reverse iteration based for loop
+- [ ] custom iterators
 - [ ] tagged unions 
 - [ ] c styled unions 
 - [ ] enum, with customizable backing types

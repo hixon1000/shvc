@@ -17,6 +17,8 @@ Equal :: struct {} // ==
 Not_Equal :: struct {} // !=
 Less :: struct {} // <
 Greater :: struct {} // >
+Plus_Assign :: struct {} // +=
+Minus_Assign :: struct {} // -=
 Question :: struct {} // ?
 Dot :: struct {} // .
 
@@ -89,6 +91,8 @@ Token :: union {
 	Not_Equal,
 	Less,
 	Greater,
+	Plus_Assign,
+	Minus_Assign,
 
 	// brackets
 	Open_Paren,

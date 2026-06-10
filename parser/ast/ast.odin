@@ -70,6 +70,7 @@ Struct_Literal_Field :: struct {
 }
 
 Struct_Literal :: struct {
+	type:   ^AST_Node,
 	fields: ^[dynamic]Struct_Literal_Field,
 }
 
@@ -105,12 +106,31 @@ Return_Stmt :: struct {
 	expr: ^AST_Node,
 }
 
-For_Loop :: struct {
-	// TODO: consider this
-	init: ^AST_Node,
-	cond: ^AST_Node,
-	step: ^AST_Node,
-	body: ^Block,
+Continue_Stmt :: struct {}
+Break_Stmt :: struct {}
+
+For_Kind :: enum {
+	Infinite,
+	Each,
+	C_Style,
+}
+
+For_Stmt :: struct {
+	kind:            For_Kind,
+
+	// for { }
+	body:            ^AST_Node,
+
+	// for i in array { }
+	// for i, index in array { }
+	iter_value_name: Identifier,
+	iter_index_name: Identifier, // empty if absent
+	iter_expr:       ^AST_Node,
+
+	// for init; condition; post { }
+	init:            ^AST_Node,
+	condition:       ^AST_Node,
+	post:            ^AST_Node,
 }
 
 Identifier :: struct {
@@ -168,7 +188,9 @@ AST_Node :: union {
 	Cast_Expr,
 	Defer_Stmt,
 	Return_Stmt,
-	For_Loop,
+	Continue_Stmt,
+	Break_Stmt,
+	For_Stmt,
 	Identifier,
 	Int_Literal,
 	Float_Literal,

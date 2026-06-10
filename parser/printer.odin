@@ -151,17 +151,55 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 			print_node(v.else_stmt, indent + 2)
 		}
 
-	case ast.For_Loop:
-		fmt.println("For_Loop:")
-		print_node(v.init, indent + 1)
-		print_node(v.cond, indent + 1)
-		print_node(v.step, indent + 1)
-		if v.body != nil && v.body.items != nil {
+	case ast.Break_Stmt:
+		fmt.println("Break_Stmt")
+
+	case ast.Continue_Stmt:
+		fmt.println("Continue_Stmt")
+
+	case ast.For_Stmt:
+		switch v.kind {
+		case .Infinite:
+			fmt.println("For_Stmt (Infinite):")
+			print_node(v.body, indent + 1)
+
+		case .Each:
+			fmt.println("For_Stmt (Each):")
+
 			print_indent(indent + 1)
-			fmt.println("Body:")
-			for stmt in v.body.items^ {
-				print_node(stmt, indent + 2)
+			fmt.printf("value: %s\n", v.iter_value_name)
+
+			if v.iter_index_name.name != "" {
+				print_indent(indent + 1)
+				fmt.printf("index: %s\n", v.iter_index_name.name)
 			}
+
+			print_indent(indent + 1)
+			fmt.println("iterable:")
+			print_node(v.iter_expr, indent + 2)
+
+			print_indent(indent + 1)
+			fmt.println("body:")
+			print_node(v.body, indent + 2)
+
+		case .C_Style:
+			fmt.println("For_Stmt (C-Style):")
+
+			print_indent(indent + 1)
+			fmt.println("init:")
+			print_node(v.init, indent + 2)
+
+			print_indent(indent + 1)
+			fmt.println("condition:")
+			print_node(v.condition, indent + 2)
+
+			print_indent(indent + 1)
+			fmt.println("post:")
+			print_node(v.post, indent + 2)
+
+			print_indent(indent + 1)
+			fmt.println("body:")
+			print_node(v.body, indent + 2)
 		}
 
 	case ast.Call:
@@ -199,6 +237,11 @@ print_node :: proc(node: ^ast.AST_Node, indent: int) {
 
 	case ast.Struct_Literal:
 		fmt.println("Struct_Literal:")
+
+		print_indent(indent + 1)
+		fmt.println("Type:")
+		print_node(v.type, indent + 2)
+
 		print_indent(indent + 1)
 		fmt.println("Fields:")
 		if v.fields != nil {

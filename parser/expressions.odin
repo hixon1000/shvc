@@ -5,7 +5,11 @@ import "base:runtime"
 import "stack"
 import "tokens"
 
-parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
+parse_expression :: proc(
+	tokenizer: ^Tokenizer,
+	arena: runtime.Allocator,
+	allow_struct_literal: bool = true,
+) -> ^ast.AST_Node {
 	operator_stack := stack.make_stack(tokens.Token, context.temp_allocator)
 	operand_stack := stack.make_stack(^ast.AST_Node, context.temp_allocator)
 
@@ -21,7 +25,26 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 
 		case tokens.Open_Bracket:
 			if expecting_op {
-				break outer
+				// check if we are allowed to parse struct literals here
+				if !allow_struct_literal {
+					break outer
+				}
+
+				// typed literal found
+				// eat {
+				token = next_token(tokenizer, arena)
+
+				// get type node that is just parsed
+				type_node, ok := stack.pop(&operand_stack)
+				if !ok do panic("compiler error: expecting_op true but operand stack empty")
+
+				// parse content inside
+				literal_node := parse_typed_braced_literal(tokenizer, arena, type_node)
+
+				// back to the operand stack
+				stack.push(&operand_stack, literal_node)
+				expecting_op = true
+				continue outer
 			}
 
 		case tokens.Close_Paren:
@@ -133,6 +156,8 @@ parse_expression :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 
 		// expecting_op remains false here cuz unary ops
 		case tokens.Assign,
+		     tokens.Plus_Assign,
+		     tokens.Minus_Assign,
 		     tokens.Plus,
 		     tokens.Minus,
 		     tokens.Star,

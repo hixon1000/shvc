@@ -90,6 +90,10 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 			advance(tokenizer, 2)
 			return tokens.Arrow{}
 		}
+		if n, ok := peek_next(tokenizer); ok && n == '=' {
+			advance(tokenizer, 2)
+			return tokens.Minus_Assign{} // For i -= 1
+		}
 		advance(tokenizer)
 		return tokens.Minus{}
 	case '^':
@@ -124,6 +128,10 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 		advance(tokenizer)
 		return tokens.Semi_Colon{}
 	case '+':
+		if n, ok := peek_next(tokenizer); ok && n == '=' {
+			advance(tokenizer, 2)
+			return tokens.Plus_Assign{}
+		}
 		advance(tokenizer)
 		return tokens.Plus{}
 	case '*':

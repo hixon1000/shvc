@@ -143,9 +143,23 @@ parse_statement_into_current_scope :: proc(
 
 		add_statement_to_block(current_scope, ret_node)
 
+	case tokens.Continue:
+		continue_node := new(ast.AST_Node, arena)
+		continue_node^ = ast.Continue_Stmt{}
+		add_statement_to_block(current_scope, continue_node)
+
+	case tokens.Break:
+		break_node := new(ast.AST_Node, arena)
+		break_node^ = ast.Break_Stmt{}
+		add_statement_to_block(current_scope, break_node)
+
 	case tokens.If:
 		if_node := parse_if_statement(tokenizer, arena)
 		add_statement_to_block(current_scope, if_node)
+
+	case tokens.For:
+		for_node := parse_for_statement(tokenizer, arena)
+		add_statement_to_block(current_scope, for_node)
 
 	case:
 		panic("unexpected token at statement level")
@@ -174,6 +188,16 @@ parse_single_statement_after_do :: proc(
 	case tokens.Val, tokens.Mut:
 		unget_token(tokenizer, token)
 		return parse_var_decl(tokenizer, arena)
+
+	case tokens.Continue:
+		node := new(ast.AST_Node, arena)
+		node^ = ast.Continue_Stmt{}
+		return node
+
+	case tokens.Break:
+		node := new(ast.AST_Node, arena)
+		node^ = ast.Break_Stmt{}
+		return node
 
 	case tokens.Defer:
 		defer_node := new(ast.AST_Node, arena)
@@ -221,7 +245,7 @@ parse_if_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^
 	final_else: ^ast.AST_Node = nil
 
 	// parse first if
-	first_cond := parse_expression(tokenizer, arena)
+	first_cond := parse_expression(tokenizer, arena, false)
 	first_body := parse_if_body(tokenizer, arena)
 
 	append(&conditions, first_cond)
@@ -240,7 +264,7 @@ parse_if_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^
 			// consume if
 			next_token(tokenizer, arena)
 
-			cond := parse_expression(tokenizer, arena)
+			cond := parse_expression(tokenizer, arena, false)
 			body := parse_if_body(tokenizer, arena)
 
 			append(&conditions, cond)
@@ -286,4 +310,209 @@ parse_if_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^
 	}
 
 	return tail
+}
+
+parse_for_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
+	next := next_token(tokenizer, arena)
+
+	#partial switch _ in next {
+	case tokens.Open_Bracket:
+		return parse_block_body(tokenizer, arena)
+
+	case tokens.Do:
+		return parse_single_statement_after_do(tokenizer, arena)
+
+	case:
+		panic("expected '{' or 'do' after for loop header")
+	}
+
+	panic("unreachable")
+}
+
+next_is_semicolon :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> bool {
+	if _, ok := peek_token(tokenizer, arena).(tokens.Semi_Colon); ok {
+		return true
+	}
+	return false
+}
+
+next_is_open_bracket :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> bool {
+	if _, ok := peek_token(tokenizer, arena).(tokens.Open_Bracket); ok {
+		return true
+	}
+	return false
+}
+
+parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
+	node := new(ast.AST_Node, arena)
+
+	// for { ... }
+	if _, is_block := peek_token(tokenizer, arena).(tokens.Open_Bracket); is_block {
+		body := parse_for_body(tokenizer, arena)
+
+		node^ = ast.For_Stmt {
+			kind = .Infinite,
+			body = body,
+		}
+
+		return node
+	}
+
+	// for mut val i: i32 = 0; i < 10; i += 1 { ... }
+	next := peek_token(tokenizer, arena)
+
+	if _, is_mut := next.(tokens.Mut); is_mut {
+		init := parse_var_decl(tokenizer, arena)
+
+		if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+			panic("expected ';' after for-loop initializer")
+		}
+
+		condition: ^ast.AST_Node = nil
+		if _, is_sc := peek_token(tokenizer, arena).(tokens.Semi_Colon); !is_sc {
+			condition = parse_expression(tokenizer, arena)
+		}
+
+		if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+			panic("expected ';' after for-loop condition")
+		}
+
+		post: ^ast.AST_Node = nil
+		if _, is_body := peek_token(tokenizer, arena).(tokens.Open_Bracket); !is_body {
+			post = parse_expression(tokenizer, arena, false)
+		}
+
+		body := parse_for_body(tokenizer, arena)
+
+		node^ = ast.For_Stmt {
+			kind      = .C_Style,
+			init      = init,
+			condition = condition,
+			post      = post,
+			body      = body,
+		}
+
+		return node
+	}
+
+	if _, is_val := next.(tokens.Val); is_val {
+		init := parse_var_decl(tokenizer, arena)
+
+		if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+			panic("expected ';' after for-loop initializer")
+		}
+
+		condition: ^ast.AST_Node = nil
+		if _, is_sc := peek_token(tokenizer, arena).(tokens.Semi_Colon); !is_sc {
+			condition = parse_expression(tokenizer, arena)
+		}
+
+		if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+			panic("expected ';' after for-loop condition")
+		}
+
+		post: ^ast.AST_Node = nil
+		if _, is_body := peek_token(tokenizer, arena).(tokens.Open_Bracket); !is_body {
+			post = parse_expression(tokenizer, arena, false)
+		}
+
+		body := parse_for_body(tokenizer, arena)
+
+		node^ = ast.For_Stmt {
+			kind      = .C_Style,
+			init      = init,
+			condition = condition,
+			post      = post,
+			body      = body,
+		}
+
+		return node
+	}
+
+	first_tok, first_ok := next_token(tokenizer, arena).(tokens.Identifier)
+	if !first_ok {
+		panic("expected '{', variable declaration, or iterator name after 'for'")
+	}
+
+	// for i, index in array { ... }
+	if _, has_comma := peek_token(tokenizer, arena).(tokens.Comma); has_comma {
+		next_token(tokenizer, arena) // consume comma
+
+		index_tok, index_ok := next_token(tokenizer, arena).(tokens.Identifier)
+		if !index_ok {
+			panic("expected index identifier after ',' in for-in loop")
+		}
+
+		if _, in_ok := next_token(tokenizer, arena).(tokens.In); !in_ok {
+			panic("expected 'in' after for iterator variables")
+		}
+
+		iter_expr := parse_expression(tokenizer, arena, false)
+		body := parse_for_body(tokenizer, arena)
+
+		node^ = ast.For_Stmt {
+			kind            = .Each,
+			iter_value_name = ast.Identifier{first_tok.content},
+			iter_index_name = ast.Identifier{index_tok.content},
+			iter_expr       = iter_expr,
+			body            = body,
+		}
+
+		return node
+	}
+
+	// for i in array { ... }
+	if _, has_in := peek_token(tokenizer, arena).(tokens.In); has_in {
+		next_token(tokenizer, arena) // consume in
+
+		iter_expr := parse_expression(tokenizer, arena, false)
+		body := parse_for_body(tokenizer, arena)
+
+		node^ = ast.For_Stmt {
+			kind            = .Each,
+			iter_value_name = ast.Identifier{first_tok.content},
+			iter_expr       = iter_expr,
+			body            = body,
+		}
+
+		return node
+	}
+
+	// for i = 0; i < 10; i += 1 { ... }
+	// we have consumed first identifier
+	// put it bacck and parse
+	unget_token(tokenizer, first_tok)
+
+	init := parse_expression(tokenizer, arena)
+
+	if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+		panic("expected ';' after for-loop initializer or 'in' for iterator loop")
+	}
+
+	condition: ^ast.AST_Node = nil
+	if _, is_sc := peek_token(tokenizer, arena).(tokens.Semi_Colon); !is_sc {
+		// ?
+		condition = parse_expression(tokenizer, arena)
+	}
+
+	if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+		panic("expected ';' after for-loop condition")
+	}
+
+	post: ^ast.AST_Node = nil
+	if _, is_body := peek_token(tokenizer, arena).(tokens.Open_Bracket); !is_body {
+		post = parse_expression(tokenizer, arena, false)
+	}
+
+	body := parse_for_body(tokenizer, arena)
+
+	node^ = ast.For_Stmt {
+		kind      = .C_Style,
+		init      = init,
+		condition = condition,
+		post      = post,
+		body      = body,
+	}
+
+	return node
 }

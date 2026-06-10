@@ -7,7 +7,7 @@ import "tokens"
 
 precedence :: proc(token: tokens.Token) -> u8 {
 	#partial switch _ in token {
-	case tokens.Assign:
+	case tokens.Assign, tokens.Plus_Assign, tokens.Minus_Assign:
 		return 1
 	case tokens.Equal, tokens.Not_Equal:
 		return 2
@@ -89,34 +89,42 @@ apply_operator :: proc(
 	arena: runtime.Allocator,
 ) {
 	op, ostack_ok := stack.pop(operator_stack)
-	if !ostack_ok {
-		panic("missing operator")
-	}
+	if !ostack_ok do panic("missing operator")
 
 	if is_unary(op) {
 		operand, ostack_u_ok := stack.pop(operand_stack)
-		if !ostack_u_ok {
-			panic("missing unary operand")
-		}
+		if !ostack_u_ok do panic("missing unary operand")
 
 		stack.push(operand_stack, create_unary_node(op, operand, arena))
 		return
 	}
 
-	right, rok := stack.pop(operand_stack)
-	left, lok := stack.pop(operand_stack)
+	#partial switch _ in op {
+	case tokens.Assign,
+	     tokens.Plus_Assign,
+	     tokens.Minus_Assign,
+	     tokens.Plus,
+	     tokens.Minus,
+	     tokens.Star,
+	     tokens.Slash,
+	     tokens.Equal,
+	     tokens.Not_Equal,
+	     tokens.Less,
+	     tokens.Greater:
+		right, rok := stack.pop(operand_stack)
+		left, lok := stack.pop(operand_stack)
 
-	if !rok || !lok {
-		panic("missing binary operand")
+		if !rok || !lok do panic("missing binary operand")
+
+		stack.push(operand_stack, create_binary_node(left, op, right, arena))
+	case:
+		panic("compiler error: unknown operator on stack")
 	}
-
-	stack.push(operand_stack, create_binary_node(left, op, right, arena))
 }
-
 
 is_right_assoc :: proc(token: tokens.Token) -> bool {
 	#partial switch _ in token {
-	case tokens.Assign:
+	case tokens.Assign, tokens.Plus_Assign, tokens.Minus_Assign:
 		return true
 	}
 	return false
