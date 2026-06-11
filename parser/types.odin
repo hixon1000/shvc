@@ -1,6 +1,7 @@
 package parser
 
 import "base:runtime"
+import "stack"
 import types "stock_types"
 import "tokens"
 
@@ -30,83 +31,112 @@ parse_type_from_identifier :: proc(name: string) -> types.Types {
 }
 
 
-// TODO: rewrite to NOT be recursive
 parse_type :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> types.Types {
-	token := next_token(tokenizer, arena)
+	Modifier_Kind :: enum {
+		Pointer,
+		Array,
+	}
 
-	#partial switch t in token {
-	case tokens.Caret:
-		elem_type := parse_type(tokenizer, arena)
-		return types.Pointer{elem = new_clone(elem_type, arena)}
+	Modifier :: struct {
+		kind:       Modifier_Kind,
+		count_kind: types.Array_Count_Kind,
+		count:      int,
+	}
 
-	case tokens.Open_SB:
-		count_kind := types.Array_Count_Kind.Fixed
-		count := 0
+	modifiers := stack.make_stack(Modifier, context.temp_allocator)
+	defer stack.destroy_stack(&modifiers)
 
-		next := peek_token(tokenizer, arena)
+	base_type: types.Types
 
-		#partial switch nt in next {
-		case tokens.Close_SB:
-			// []i32
-			next_token(tokenizer, arena)
-			count_kind = .Slice
+	// collect type modifiers left to right
+	type_parsing_loop: for {
+		token := next_token(tokenizer, arena)
 
-		case tokens.Question:
-			// [?]i32
-			next_token(tokenizer, arena)
+		#partial switch t in token {
+		case tokens.Caret:
+			stack.push(&modifiers, Modifier{kind = .Pointer})
 
-			if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
-				panic("expected ']' after '?' in array type")
-			}
+		case tokens.Open_SB:
+			count_kind := types.Array_Count_Kind.Fixed
+			count := 0
 
-			count_kind = .Infer
+			next := peek_token(tokenizer, arena)
 
-		case tokens.Identifier:
-			// [dynamic]i32
-			if nt.content == "dynamic" {
+			#partial switch nt in next {
+			case tokens.Close_SB:
+				next_token(tokenizer, arena)
+				count_kind = .Slice
+
+			case tokens.Question:
 				next_token(tokenizer, arena)
 
 				if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
-					panic("expected ']' after dynamic in array type")
+					panic("expected ']' after '?' in array type")
 				}
 
-				count_kind = .Dynamic
-			} else {
+				count_kind = .Infer
+
+			case tokens.Identifier:
+				if nt.content == "dynamic" {
+					next_token(tokenizer, arena)
+
+					if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
+						panic("expected ']' after dynamic in array type")
+					}
+
+					count_kind = .Dynamic
+				} else {
+					panic("expected array count, '?', 'dynamic', or ']'")
+				}
+
+			case tokens.Int_Literal:
+				next_token(tokenizer, arena)
+
+				if nt.content < 0 {
+					panic("array count cannot be negative")
+				}
+
+				count = int(nt.content)
+
+				if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
+					panic("expected ']' after array count")
+				}
+
+				count_kind = .Fixed
+
+			case:
 				panic("expected array count, '?', 'dynamic', or ']'")
 			}
 
-		case tokens.Int_Literal:
-			// [3]i32
-			next_token(tokenizer, arena)
+			stack.push(&modifiers, Modifier{kind = .Array, count_kind = count_kind, count = count})
 
-			if nt.content < 0 {
-				panic("array count cannot be negative")
-			}
-
-			count = int(nt.content)
-
-			if _, ok := next_token(tokenizer, arena).(tokens.Close_SB); !ok {
-				panic("expected ']' after array count")
-			}
-
-			count_kind = .Fixed
+		case tokens.Identifier:
+			base_type = parse_type_from_identifier(t.content)
+			break type_parsing_loop // this is why shiver wont have fallthrough
 
 		case:
-			panic("expected array count, '?', 'dynamic', or ']'")
+			panic("expected a valid type identifier or type modifier")
 		}
-
-		elem_type := parse_type(tokenizer, arena)
-
-		return types.Array {
-			count_kind = count_kind,
-			count = count,
-			elem = new_clone(elem_type, arena),
-		}
-
-	case tokens.Identifier:
-		return parse_type_from_identifier(t.content)
-
-	case:
-		panic("expected a valid type identifier or type modifier")
 	}
+
+	// churnmaxxing through the stack
+	current_type := base_type
+	for !stack.is_empty(&modifiers) {
+		m, _ := stack.pop(&modifiers)
+
+		switch m.kind {
+		case .Pointer:
+			current_type = types.Pointer {
+				elem = new_clone(current_type, arena),
+			}
+		case .Array:
+			current_type = types.Array {
+				count_kind = m.count_kind,
+				count      = m.count,
+				elem       = new_clone(current_type, arena),
+			}
+		}
+	}
+
+	return current_type
 }
