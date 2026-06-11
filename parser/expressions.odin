@@ -10,7 +10,7 @@ parse_expression :: proc(
 	arena: runtime.Allocator,
 	allow_struct_literal: bool = true,
 ) -> ^ast.AST_Node {
-	operator_stack := stack.make_stack(tokens.Token, context.temp_allocator)
+	operator_stack := stack.make_stack(Op_Item, context.temp_allocator)
 	operand_stack := stack.make_stack(^ast.AST_Node, context.temp_allocator)
 
 	open_paren_count := 0
@@ -26,9 +26,7 @@ parse_expression :: proc(
 		case tokens.Open_Bracket:
 			if expecting_op {
 				// check if we are allowed to parse struct literals here
-				if !allow_struct_literal {
-					break outer
-				}
+				if !allow_struct_literal do break outer
 
 				// typed literal found
 				// eat {
@@ -48,9 +46,7 @@ parse_expression :: proc(
 			}
 
 		case tokens.Close_Paren:
-			if open_paren_count == 0 {
-				break outer
-			}
+			if open_paren_count == 0 do break outer
 		}
 
 		token = next_token(tokenizer, arena)
@@ -122,18 +118,56 @@ parse_expression :: proc(
 			stack.push(&operand_stack, operand)
 			expecting_op = true
 
-		case tokens.Ampersand, tokens.Caret:
-			// unary opts
+		case tokens.Caret:
+			if expecting_op {
+				operand, ok := stack.pop(&operand_stack)
+				if !ok do panic("internal parser error: operand stack empty for postfix dereference")
+
+				stack.push(&operand_stack, create_unary_node(token, operand, arena))
+				expecting_op = true
+				continue outer
+			} else {
+				// prefix pointer types like ^i32
+				stack.push(&operator_stack, Op_Item{token = token, is_unary = true})
+				expecting_op = false
+			}
+
+		case tokens.Ampersand:
 			if expecting_op {
 				unget_token(tokenizer, token)
 				break outer
 			}
-			stack.push(&operator_stack, token)
+			// prefix address of operator
+			stack.push(&operator_stack, Op_Item{token = token, is_unary = true})
+			expecting_op = false
+
+		case tokens.Plus, tokens.Minus:
+			if !expecting_op {
+				// prefix unary operator like -21
+				stack.push(&operator_stack, Op_Item{token = token, is_unary = true})
+				expecting_op = false
+				continue outer
+			}
+
+			// binary infix like a - b
+			for !stack.is_empty(&operator_stack) {
+				top, _ := stack.peek(&operator_stack)
+				if _, ok := top.token.(tokens.Open_Paren); ok do break
+
+				top_prec := precedence(top)
+				cur_prec := precedence(Op_Item{token = token, is_unary = false})
+
+				if top_prec > cur_prec || (!is_right_assoc(token) && top_prec == cur_prec) {
+					apply_operator(&operator_stack, &operand_stack, arena)
+					continue
+				}
+				break
+			}
+			stack.push(&operator_stack, Op_Item{token = token, is_unary = false})
+			expecting_op = false
 
 		case tokens.As, tokens.As_Bang:
-			if !expecting_op {
-				panic("unexpected cast operator without left-hand side expression")
-			}
+			if !expecting_op do panic("unexpected cast operator without left-hand side expression")
 
 			// pop the lhs we casting rn
 			left, ok := stack.pop(&operand_stack)
@@ -141,7 +175,6 @@ parse_expression :: proc(
 
 			// we gotta see what type it is dont we
 			target_type := parse_type(tokenizer, arena)
-
 			_, is_reinterpret := token.(tokens.As_Bang)
 
 			node := new(ast.AST_Node, arena)
@@ -158,8 +191,6 @@ parse_expression :: proc(
 		case tokens.Assign,
 		     tokens.Plus_Assign,
 		     tokens.Minus_Assign,
-		     tokens.Plus,
-		     tokens.Minus,
 		     tokens.Star,
 		     tokens.Slash,
 		     tokens.Equal,
@@ -167,29 +198,22 @@ parse_expression :: proc(
 		     tokens.Less,
 		     tokens.Greater:
 			// binary opts
-			if !expecting_op {
-				panic("unexpected binary operator")
-			}
+			if !expecting_op do panic("unexpected binary operator")
 
 			for !stack.is_empty(&operator_stack) {
 				top, _ := stack.peek(&operator_stack)
-
-				if _, ok := top.(tokens.Open_Paren); ok {
-					break
-				}
+				if _, ok := top.token.(tokens.Open_Paren); ok do break
 
 				top_prec := precedence(top)
-				cur_prec := precedence(token)
+				cur_prec := precedence(Op_Item{token = token, is_unary = false})
 
 				if top_prec > cur_prec || (!is_right_assoc(token) && top_prec == cur_prec) {
 					apply_operator(&operator_stack, &operand_stack, arena)
 					continue
 				}
-
 				break
 			}
-
-			stack.push(&operator_stack, token)
+			stack.push(&operator_stack, Op_Item{token = token, is_unary = false})
 			expecting_op = false
 
 		case tokens.Open_Paren:
@@ -198,30 +222,25 @@ parse_expression :: proc(
 				break outer
 			}
 			open_paren_count += 1
-			stack.push(&operator_stack, token)
+			stack.push(&operator_stack, Op_Item{token = token, is_unary = false})
 
-		case tokens.Close_Paren:
-			if !expecting_op {
-				panic("unexpected ')'")
-			}
+			expecting_op = true // closed parencase tokens.Close_Paren:
+			if !expecting_op do panic("unexpected ')'")
 			open_paren_count -= 1
 			found_open := false
 
 			for !stack.is_empty(&operator_stack) {
 				top, _ := stack.peek(&operator_stack)
 
-				if _, ok := top.(tokens.Open_Paren); ok {
+				if _, ok := top.token.(tokens.Open_Paren); ok {
 					stack.pop(&operator_stack)
 					found_open = true
 					break
 				}
-
 				apply_operator(&operator_stack, &operand_stack, arena)
 			}
 
-			if !found_open {
-				panic("unmatched closing parenthesis")
-			}
+			if !found_open do panic("unmatched closing parenthesis")
 			expecting_op = true // closed paren acts like a completed operand
 
 		case tokens.Open_Bracket:
@@ -232,7 +251,6 @@ parse_expression :: proc(
 
 			operand := parse_braced_literal(tokenizer, arena)
 			operand = parse_postfix_expr(tokenizer, arena, operand)
-
 			stack.push(&operand_stack, operand)
 			expecting_op = true
 
@@ -246,25 +264,15 @@ parse_expression :: proc(
 
 	for !stack.is_empty(&operator_stack) {
 		top, _ := stack.peek(&operator_stack)
-
-		if _, ok := top.(tokens.Open_Paren); ok {
-			panic("unmatched parenthesis")
-		}
-		if _, ok := top.(tokens.Close_Paren); ok {
-			panic("unmatched parenthesis")
-		}
+		if _, ok := top.token.(tokens.Open_Paren); ok do panic("unmatched parenthesis")
+		if _, ok := top.token.(tokens.Close_Paren); ok do panic("unmatched parenthesis")
 
 		apply_operator(&operator_stack, &operand_stack, arena)
 	}
 
 	result, ok := stack.pop(&operand_stack)
-	if !ok {
-		panic("expected expression")
-	}
-
-	if !stack.is_empty(&operand_stack) {
-		panic("malformed expression: too many operands")
-	}
+	if !ok do panic("expected expression")
+	if !stack.is_empty(&operand_stack) do panic("malformed expression: too many operands")
 
 	return result
 }
