@@ -224,7 +224,9 @@ parse_expression :: proc(
 			open_paren_count += 1
 			stack.push(&operator_stack, Op_Item{token = token, is_unary = false})
 
-			expecting_op = true // closed parencase tokens.Close_Paren:
+			expecting_op = true // closed paren
+
+		case tokens.Close_Paren:
 			if !expecting_op do panic("unexpected ')'")
 			open_paren_count -= 1
 			found_open := false
