@@ -5,8 +5,17 @@ import "base:runtime"
 import "stack"
 import "tokens"
 
-precedence :: proc(token: tokens.Token) -> u8 {
-	#partial switch _ in token {
+Op_Item :: struct {
+	token:    tokens.Token,
+	is_unary: bool,
+}
+
+precedence :: proc(item: Op_Item) -> u8 {
+	if item.is_unary {
+		return 6 // high precedence
+	}
+
+	#partial switch _ in item.token {
 	case tokens.Assign, tokens.Plus_Assign, tokens.Minus_Assign:
 		return 1
 	case tokens.Equal, tokens.Not_Equal:
@@ -84,22 +93,22 @@ create_unary_node :: proc(
 }
 
 apply_operator :: proc(
-	operator_stack: ^stack.Stack(tokens.Token),
+	operator_stack: ^stack.Stack(Op_Item),
 	operand_stack: ^stack.Stack(^ast.AST_Node),
 	arena: runtime.Allocator,
 ) {
-	op, ostack_ok := stack.pop(operator_stack)
+	op_item, ostack_ok := stack.pop(operator_stack)
 	if !ostack_ok do panic("missing operator")
 
-	if is_unary(op) {
+	if op_item.is_unary {
 		operand, ostack_u_ok := stack.pop(operand_stack)
 		if !ostack_u_ok do panic("missing unary operand")
 
-		stack.push(operand_stack, create_unary_node(op, operand, arena))
+		stack.push(operand_stack, create_unary_node(op_item.token, operand, arena))
 		return
 	}
 
-	#partial switch _ in op {
+	#partial switch _ in op_item.token {
 	case tokens.Assign,
 	     tokens.Plus_Assign,
 	     tokens.Minus_Assign,
@@ -116,7 +125,7 @@ apply_operator :: proc(
 
 		if !rok || !lok do panic("missing binary operand")
 
-		stack.push(operand_stack, create_binary_node(left, op, right, arena))
+		stack.push(operand_stack, create_binary_node(left, op_item.token, right, arena))
 	case:
 		panic("compiler error: unknown operator on stack")
 	}
