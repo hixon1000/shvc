@@ -34,17 +34,14 @@
 - [x] reinterpret cast with as!
 - [ ] switch statements
 - [ ] hashmap
+- [ ] type alias
 - [ ] distinct type alias
 - [ ] inline asm
 - [ ] volatile load / stores
-- [ ] atomics
-- [ ] multithreading
-- [ ] allocators
 - [x] for loop, array iteration (with or w/o index), infinite loop
 - [x] break & continue
 - [ ] labelled break & continue 
 - [ ] reverse iteration based for loop
-- [ ] custom iterators
 - [ ] tagged unions 
 - [ ] c styled unions 
 - [ ] enum, with customizable backing types
@@ -58,11 +55,20 @@
 - [ ] c foreign function interface
 - [ ] declarative macros
 - [ ] procedural macros
+- [ ] magic payloads (loading a file as string)
+- [ ] special syntaxes for common macro operations (e.g. compile time if statements)
 - [ ] inline docstrings
 - [ ] goto
+- [ ] directives to modify functions / variables / structs & more
 
 # Analyzer
 - [ ] start working on it
 
 # Code Generation
 - [ ] start working on it
+
+# Standard Library
+- [ ] atomics
+- [ ] custom iterators
+- [ ] allocators
+- [ ] multithreading
