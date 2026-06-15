@@ -18,7 +18,7 @@ parse_statement_into_current_scope :: proc(
 ) -> Parse_Status {
 	token := next_token(tokenizer, arena)
 
-	if _, eofok := token.(tokens.Eof); eofok {
+	if _, eofok := token.kind.(tokens.Eof); eofok {
 		if !is_root {
 			panic("unexpected EOF inside block")
 		}
@@ -26,7 +26,7 @@ parse_statement_into_current_scope :: proc(
 		return .Done
 	}
 
-	if _, scok := token.(tokens.Semi_Colon); scok {
+	if _, scok := token.kind.(tokens.Semi_Colon); scok {
 		return .Continue
 	}
 
@@ -35,7 +35,7 @@ parse_statement_into_current_scope :: proc(
 		panic("internal parser error: empty scope stack")
 	}
 
-	#partial switch _ in token {
+	#partial switch _ in token.kind {
 	case tokens.Fn:
 		fn := parse_fn_signature(tokenizer, arena)
 
@@ -44,7 +44,7 @@ parse_statement_into_current_scope :: proc(
 
 		add_statement_to_block(current_scope, fn_node)
 
-		if _, obok := peek_token(tokenizer, arena).(tokens.Open_Bracket); obok {
+		if _, obok := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); obok {
 			next_token(tokenizer, arena)
 			stack.push(scope_stack, fn.body)
 		} else {
@@ -101,7 +101,7 @@ parse_statement_into_current_scope :: proc(
 	case tokens.Defer:
 		defer_node := new(ast.AST_Node, arena)
 
-		if _, is_block := peek_token(tokenizer, arena).(tokens.Open_Bracket); is_block {
+		if _, is_block := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); is_block {
 			next_token(tokenizer, arena)
 
 			defer_block := make_block(arena)
@@ -129,7 +129,7 @@ parse_statement_into_current_scope :: proc(
 
 		// see if theres an expr following return
 		next_tok := peek_token(tokenizer, arena)
-		#partial switch _ in next_tok {
+		#partial switch _ in next_tok.kind {
 		case tokens.Semi_Colon, tokens.Close_Bracket, tokens.Eof:
 		// remains nil
 		case:
@@ -174,7 +174,7 @@ parse_single_statement_after_do :: proc(
 ) -> ^ast.AST_Node {
 	token := next_token(tokenizer, arena)
 
-	#partial switch _ in token {
+	#partial switch _ in token.kind {
 	case tokens.Identifier,
 	     tokens.Int_Literal,
 	     tokens.String_Literal,
@@ -202,7 +202,7 @@ parse_single_statement_after_do :: proc(
 	case tokens.Defer:
 		defer_node := new(ast.AST_Node, arena)
 
-		if _, is_block := peek_token(tokenizer, arena).(tokens.Open_Bracket); is_block {
+		if _, is_block := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); is_block {
 			panic("block defer is not allowed after 'do'; use 'if cond { defer { ... } }'")
 		}
 
@@ -224,7 +224,7 @@ parse_single_statement_after_do :: proc(
 parse_if_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
 	next := next_token(tokenizer, arena)
 
-	#partial switch _ in next {
+	#partial switch _ in next.kind {
 	case tokens.Open_Bracket:
 		return parse_block_body(tokenizer, arena)
 
@@ -253,14 +253,14 @@ parse_if_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^
 
 	// parse 0 or more else ifs, then else
 	for {
-		if _, has_else := peek_token(tokenizer, arena).(tokens.Else); !has_else {
+		if _, has_else := peek_token(tokenizer, arena).kind.(tokens.Else); !has_else {
 			break
 		}
 
 		// consume else
 		next_token(tokenizer, arena)
 
-		if _, has_if := peek_token(tokenizer, arena).(tokens.If); has_if {
+		if _, has_if := peek_token(tokenizer, arena).kind.(tokens.If); has_if {
 			// consume if
 			next_token(tokenizer, arena)
 
@@ -276,7 +276,7 @@ parse_if_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^
 		// plain else
 		next := next_token(tokenizer, arena)
 
-		#partial switch _ in next {
+		#partial switch _ in next.kind {
 		case tokens.Open_Bracket:
 			final_else = parse_block_body(tokenizer, arena)
 
@@ -315,7 +315,7 @@ parse_if_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^
 parse_for_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
 	next := next_token(tokenizer, arena)
 
-	#partial switch _ in next {
+	#partial switch _ in next.kind {
 	case tokens.Open_Bracket:
 		return parse_block_body(tokenizer, arena)
 
@@ -330,14 +330,14 @@ parse_for_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.
 }
 
 next_is_semicolon :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> bool {
-	if _, ok := peek_token(tokenizer, arena).(tokens.Semi_Colon); ok {
+	if _, ok := peek_token(tokenizer, arena).kind.(tokens.Semi_Colon); ok {
 		return true
 	}
 	return false
 }
 
 next_is_open_bracket :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> bool {
-	if _, ok := peek_token(tokenizer, arena).(tokens.Open_Bracket); ok {
+	if _, ok := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); ok {
 		return true
 	}
 	return false
@@ -347,7 +347,7 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 	node := new(ast.AST_Node, arena)
 
 	// for { ... }
-	if _, is_block := peek_token(tokenizer, arena).(tokens.Open_Bracket); is_block {
+	if _, is_block := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); is_block {
 		body := parse_for_body(tokenizer, arena)
 
 		node^ = ast.For_Stmt {
@@ -361,24 +361,24 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 	// for mut val i: i32 = 0; i < 10; i += 1 { ... }
 	next := peek_token(tokenizer, arena)
 
-	if _, is_mut := next.(tokens.Mut); is_mut {
+	if _, is_mut := next.kind.(tokens.Mut); is_mut {
 		init := parse_var_decl(tokenizer, arena)
 
-		if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+		if _, ok := next_token(tokenizer, arena).kind.(tokens.Semi_Colon); !ok {
 			panic("expected ';' after for-loop initializer")
 		}
 
 		condition: ^ast.AST_Node = nil
-		if _, is_sc := peek_token(tokenizer, arena).(tokens.Semi_Colon); !is_sc {
+		if _, is_sc := peek_token(tokenizer, arena).kind.(tokens.Semi_Colon); !is_sc {
 			condition = parse_expression(tokenizer, arena)
 		}
 
-		if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+		if _, ok := next_token(tokenizer, arena).kind.(tokens.Semi_Colon); !ok {
 			panic("expected ';' after for-loop condition")
 		}
 
 		post: ^ast.AST_Node = nil
-		if _, is_body := peek_token(tokenizer, arena).(tokens.Open_Bracket); !is_body {
+		if _, is_body := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); !is_body {
 			post = parse_expression(tokenizer, arena, false)
 		}
 
@@ -395,24 +395,24 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 		return node
 	}
 
-	if _, is_val := next.(tokens.Val); is_val {
+	if _, is_val := next.kind.(tokens.Val); is_val {
 		init := parse_var_decl(tokenizer, arena)
 
-		if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+		if _, ok := next_token(tokenizer, arena).kind.(tokens.Semi_Colon); !ok {
 			panic("expected ';' after for-loop initializer")
 		}
 
 		condition: ^ast.AST_Node = nil
-		if _, is_sc := peek_token(tokenizer, arena).(tokens.Semi_Colon); !is_sc {
+		if _, is_sc := peek_token(tokenizer, arena).kind.(tokens.Semi_Colon); !is_sc {
 			condition = parse_expression(tokenizer, arena)
 		}
 
-		if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+		if _, ok := next_token(tokenizer, arena).kind.(tokens.Semi_Colon); !ok {
 			panic("expected ';' after for-loop condition")
 		}
 
 		post: ^ast.AST_Node = nil
-		if _, is_body := peek_token(tokenizer, arena).(tokens.Open_Bracket); !is_body {
+		if _, is_body := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); !is_body {
 			post = parse_expression(tokenizer, arena, false)
 		}
 
@@ -429,21 +429,22 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 		return node
 	}
 
-	first_tok, first_ok := next_token(tokenizer, arena).(tokens.Identifier)
+	first_spanned := next_token(tokenizer, arena)
+	first_tok, first_ok := first_spanned.kind.(tokens.Identifier)
 	if !first_ok {
 		panic("expected '{', variable declaration, or iterator name after 'for'")
 	}
 
 	// for i, index in array { ... }
-	if _, has_comma := peek_token(tokenizer, arena).(tokens.Comma); has_comma {
+	if _, has_comma := peek_token(tokenizer, arena).kind.(tokens.Comma); has_comma {
 		next_token(tokenizer, arena) // consume comma
 
-		index_tok, index_ok := next_token(tokenizer, arena).(tokens.Identifier)
+		index_tok, index_ok := next_token(tokenizer, arena).kind.(tokens.Identifier)
 		if !index_ok {
 			panic("expected index identifier after ',' in for-in loop")
 		}
 
-		if _, in_ok := next_token(tokenizer, arena).(tokens.In); !in_ok {
+		if _, in_ok := next_token(tokenizer, arena).kind.(tokens.In); !in_ok {
 			panic("expected 'in' after for iterator variables")
 		}
 
@@ -462,7 +463,7 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 	}
 
 	// for i in array { ... }
-	if _, has_in := peek_token(tokenizer, arena).(tokens.In); has_in {
+	if _, has_in := peek_token(tokenizer, arena).kind.(tokens.In); has_in {
 		next_token(tokenizer, arena) // consume in
 
 		iter_expr := parse_expression(tokenizer, arena, false)
@@ -481,26 +482,26 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 	// for i = 0; i < 10; i += 1 { ... }
 	// we have consumed first identifier
 	// put it bacck and parse
-	unget_token(tokenizer, first_tok)
+	unget_token(tokenizer, first_spanned)
 
 	init := parse_expression(tokenizer, arena)
 
-	if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+	if _, ok := next_token(tokenizer, arena).kind.(tokens.Semi_Colon); !ok {
 		panic("expected ';' after for-loop initializer or 'in' for iterator loop")
 	}
 
 	condition: ^ast.AST_Node = nil
-	if _, is_sc := peek_token(tokenizer, arena).(tokens.Semi_Colon); !is_sc {
+	if _, is_sc := peek_token(tokenizer, arena).kind.(tokens.Semi_Colon); !is_sc {
 		// ?
 		condition = parse_expression(tokenizer, arena)
 	}
 
-	if _, ok := next_token(tokenizer, arena).(tokens.Semi_Colon); !ok {
+	if _, ok := next_token(tokenizer, arena).kind.(tokens.Semi_Colon); !ok {
 		panic("expected ';' after for-loop condition")
 	}
 
 	post: ^ast.AST_Node = nil
-	if _, is_body := peek_token(tokenizer, arena).(tokens.Open_Bracket); !is_body {
+	if _, is_body := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); !is_body {
 		post = parse_expression(tokenizer, arena, false)
 	}
 

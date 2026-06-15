@@ -19,7 +19,7 @@ parse_expression :: proc(
 	outer: for {
 		token := peek_token(tokenizer, arena)
 
-		#partial switch _ in token {
+		#partial switch _ in token.kind {
 		case tokens.Semi_Colon, tokens.Close_Bracket, tokens.Comma, tokens.Close_SB:
 			break outer
 
@@ -51,7 +51,7 @@ parse_expression :: proc(
 
 		token = next_token(tokenizer, arena)
 
-		#partial switch t in token {
+		#partial switch t in token.kind {
 		case tokens.Identifier:
 			if expecting_op {
 				// we have operand but we hit another identifier after
@@ -63,7 +63,7 @@ parse_expression :: proc(
 			next := peek_token(tokenizer, arena)
 			operand: ^ast.AST_Node
 
-			if _, is_call := next.(tokens.Open_Paren); is_call {
+			if _, is_call := next.kind.(tokens.Open_Paren); is_call {
 				// eat the (
 				next_token(tokenizer, arena)
 
@@ -71,13 +71,13 @@ parse_expression :: proc(
 				args_list := new([dynamic]^ast.AST_Node, arena)
 				args_list^ = make([dynamic]^ast.AST_Node, arena)
 
-				if _, empty := peek_token(tokenizer, arena).(tokens.Close_Paren); !empty {
+				if _, empty := peek_token(tokenizer, arena).kind.(tokens.Close_Paren); !empty {
 					for {
 						arg_expr := parse_expression(tokenizer, arena)
 						append(args_list, arg_expr)
 
 						sep := next_token(tokenizer, arena)
-						#partial switch _ in sep {
+						#partial switch _ in sep.kind {
 						case tokens.Comma:
 							continue
 						case tokens.Close_Paren:
@@ -152,7 +152,7 @@ parse_expression :: proc(
 			// binary infix like a - b
 			for !stack.is_empty(&operator_stack) {
 				top, _ := stack.peek(&operator_stack)
-				if _, ok := top.token.(tokens.Open_Paren); ok do break
+				if _, ok := top.token.kind.(tokens.Open_Paren); ok do break
 
 				top_prec := precedence(top)
 				cur_prec := precedence(Op_Item{token = token, is_unary = false})
@@ -175,7 +175,7 @@ parse_expression :: proc(
 
 			// we gotta see what type it is dont we
 			target_type := parse_type(tokenizer, arena)
-			_, is_reinterpret := token.(tokens.As_Bang)
+			_, is_reinterpret := token.kind.(tokens.As_Bang)
 
 			node := new(ast.AST_Node, arena)
 			node^ = ast.Cast_Expr {
@@ -202,7 +202,7 @@ parse_expression :: proc(
 
 			for !stack.is_empty(&operator_stack) {
 				top, _ := stack.peek(&operator_stack)
-				if _, ok := top.token.(tokens.Open_Paren); ok do break
+				if _, ok := top.token.kind.(tokens.Open_Paren); ok do break
 
 				top_prec := precedence(top)
 				cur_prec := precedence(Op_Item{token = token, is_unary = false})
@@ -234,7 +234,7 @@ parse_expression :: proc(
 			for !stack.is_empty(&operator_stack) {
 				top, _ := stack.peek(&operator_stack)
 
-				if _, ok := top.token.(tokens.Open_Paren); ok {
+				if _, ok := top.token.kind.(tokens.Open_Paren); ok {
 					stack.pop(&operator_stack)
 					found_open = true
 					break
@@ -266,8 +266,8 @@ parse_expression :: proc(
 
 	for !stack.is_empty(&operator_stack) {
 		top, _ := stack.peek(&operator_stack)
-		if _, ok := top.token.(tokens.Open_Paren); ok do panic("unmatched parenthesis")
-		if _, ok := top.token.(tokens.Close_Paren); ok do panic("unmatched parenthesis")
+		if _, ok := top.token.kind.(tokens.Open_Paren); ok do panic("unmatched parenthesis")
+		if _, ok := top.token.kind.(tokens.Close_Paren); ok do panic("unmatched parenthesis")
 
 		apply_operator(&operator_stack, &operand_stack, arena)
 	}

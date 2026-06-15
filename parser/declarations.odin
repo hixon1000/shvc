@@ -15,12 +15,12 @@ parse_fn_signature :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 	fn.args = args_ptr
 	fn.body = make_block(arena)
 
-	first_tok, idok := next_token(tokenizer, arena).(tokens.Identifier)
+	first_tok, idok := next_token(tokenizer, arena).kind.(tokens.Identifier)
 	if !idok do panic("expected function or method name")
 
-	if _, has_dot := peek_token(tokenizer, arena).(tokens.Dot); has_dot {
+	if _, has_dot := peek_token(tokenizer, arena).kind.(tokens.Dot); has_dot {
 		next_token(tokenizer, arena) // consume .
-		method_tok, mok := next_token(tokenizer, arena).(tokens.Identifier)
+		method_tok, mok := next_token(tokenizer, arena).kind.(tokens.Identifier)
 		if !mok do panic("expected method name after '.'")
 
 		// combine them into a single string identifier
@@ -32,26 +32,26 @@ parse_fn_signature :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 	}
 
 	// consume (
-	if _, ntok := next_token(tokenizer, arena).(tokens.Open_Paren); !ntok {
+	if _, ntok := next_token(tokenizer, arena).kind.(tokens.Open_Paren); !ntok {
 		panic("expected '('")
 	}
 
-	if _, ptok := peek_token(tokenizer, arena).(tokens.Close_Paren); ptok {
+	if _, ptok := peek_token(tokenizer, arena).kind.(tokens.Close_Paren); ptok {
 		next_token(tokenizer, arena)
 	} else {
 		arg_loop: for {
 			// handle mut prefix
 			tok := next_token(tokenizer, arena)
 			is_arg_mut := false
-			if _, is_mut := tok.(tokens.Mut); is_mut {
+			if _, is_mut := tok.kind.(tokens.Mut); is_mut {
 				is_arg_mut = true
 				tok = next_token(tokenizer, arena)
 			}
 
-			arg_name_tok, name_ok := tok.(tokens.Identifier)
+			arg_name_tok, name_ok := tok.kind.(tokens.Identifier)
 			if !name_ok do panic("expected argument name")
 
-			if _, colok := next_token(tokenizer, arena).(tokens.Colon); !colok {
+			if _, colok := next_token(tokenizer, arena).kind.(tokens.Colon); !colok {
 				panic("expected ':'")
 			}
 
@@ -63,7 +63,7 @@ parse_fn_signature :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 			)
 
 			sep := next_token(tokenizer, arena)
-			#partial switch _ in sep {
+			#partial switch _ in sep.kind {
 			case tokens.Comma:
 				continue
 			case tokens.Close_Paren:
@@ -76,7 +76,7 @@ parse_fn_signature :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 
 	fn.ret_type = types.Unit{}
 
-	if _, arok := peek_token(tokenizer, arena).(tokens.Arrow); arok {
+	if _, arok := peek_token(tokenizer, arena).kind.(tokens.Arrow); arok {
 		next_token(tokenizer, arena) // consume ->
 		fn.ret_type = parse_type(tokenizer, arena)
 	}
@@ -85,10 +85,10 @@ parse_fn_signature :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 }
 
 parse_trait_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
-	name_tok, idok := next_token(tokenizer, arena).(tokens.Identifier)
+	name_tok, idok := next_token(tokenizer, arena).kind.(tokens.Identifier)
 	if !idok do panic("expected trait name")
 
-	if _, obok := next_token(tokenizer, arena).(tokens.Open_Bracket); !obok {
+	if _, obok := next_token(tokenizer, arena).kind.(tokens.Open_Bracket); !obok {
 		panic("expected '{' after trait name")
 	}
 
@@ -96,14 +96,14 @@ parse_trait_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 	methods_ptr^ = make([dynamic]ast.Fn_Decl, arena)
 
 	for {
-		if _, cbok := peek_token(tokenizer, arena).(tokens.Close_Bracket); cbok {
+		if _, cbok := peek_token(tokenizer, arena).kind.(tokens.Close_Bracket); cbok {
 			next_token(tokenizer, arena) // consume }
 			break
 		}
 
 		tok := next_token(tokenizer, arena)
 
-		#partial switch _ in tok {
+		#partial switch _ in tok.kind {
 		case tokens.Fn:
 			method_sig := parse_fn_signature(tokenizer, arena)
 			append(methods_ptr, method_sig)
@@ -137,33 +137,33 @@ parse_struct_signature :: proc(
 	fields_ptr^ = make([dynamic]ast.Type_Pair, arena)
 	structure.fields = fields_ptr
 
-	name_tok, idok := next_token(tokenizer, arena).(tokens.Identifier)
+	name_tok, idok := next_token(tokenizer, arena).kind.(tokens.Identifier)
 	if !idok do panic("expected struct name")
 
 	structure.name = name_tok.content
 
-	if _, obok := next_token(tokenizer, arena).(tokens.Open_Bracket); !obok {
+	if _, obok := next_token(tokenizer, arena).kind.(tokens.Open_Bracket); !obok {
 		panic("expected '{'")
 	}
 
 	for {
-		if _, cbok := peek_token(tokenizer, arena).(tokens.Close_Bracket); cbok {
+		if _, cbok := peek_token(tokenizer, arena).kind.(tokens.Close_Bracket); cbok {
 			next_token(tokenizer, arena)
 			break
 		}
-		if _, cpok := peek_token(tokenizer, arena).(tokens.Close_Paren); cpok {
+		if _, cpok := peek_token(tokenizer, arena).kind.(tokens.Close_Paren); cpok {
 			next_token(tokenizer, arena)
 			break
 		}
 
-		field_name_tok, fidok := next_token(tokenizer, arena).(tokens.Identifier)
+		field_name_tok, fidok := next_token(tokenizer, arena).kind.(tokens.Identifier)
 		if !fidok do panic("expected field name")
 
-		if _, ok := next_token(tokenizer, arena).(tokens.Colon); !ok {
+		if _, ok := next_token(tokenizer, arena).kind.(tokens.Colon); !ok {
 			panic("expected ':'")
 		}
 
-		field_type_tok, fok := next_token(tokenizer, arena).(tokens.Identifier)
+		field_type_tok, fok := next_token(tokenizer, arena).kind.(tokens.Identifier)
 		if !fok do panic("expected field type")
 
 		append(
@@ -176,7 +176,7 @@ parse_struct_signature :: proc(
 
 		sep := next_token(tokenizer, arena)
 
-		#partial switch _ in sep {
+		#partial switch _ in sep.kind {
 		case tokens.Comma:
 			continue
 		case tokens.Close_Bracket:
@@ -194,22 +194,22 @@ parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.
 	is_mutable := false
 
 	// check if its mut
-	if _, ok := token.(tokens.Mut); ok {
+	if _, ok := token.kind.(tokens.Mut); ok {
 		is_mutable = true
 		token = next_token(tokenizer, arena)
 	}
 
 	// next token is val
-	if _, ok := token.(tokens.Val); !ok {
+	if _, ok := token.kind.(tokens.Val); !ok {
 		panic("expected 'val' keyword in variable declaration")
 	}
 
 	// grab the var name
-	name_tok, varnameok := next_token(tokenizer, arena).(tokens.Identifier)
+	name_tok, varnameok := next_token(tokenizer, arena).kind.(tokens.Identifier)
 	if !varnameok do panic("expected variable name identifier")
 
 	// a : for type
-	if _, colok := next_token(tokenizer, arena).(tokens.Colon); !colok {
+	if _, colok := next_token(tokenizer, arena).kind.(tokens.Colon); !colok {
 		panic("expected ':' after variable name")
 	}
 
@@ -220,10 +220,10 @@ parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.
 	init_kind := ast.Var_Init_Kind.Zero
 	value_expr: ^ast.AST_Node = nil
 
-	if _, has_assign := peek_token(tokenizer, arena).(tokens.Assign); has_assign {
+	if _, has_assign := peek_token(tokenizer, arena).kind.(tokens.Assign); has_assign {
 		next_token(tokenizer, arena) // consume =
 
-		if _, is_question := peek_token(tokenizer, arena).(tokens.Question); is_question {
+		if _, is_question := peek_token(tokenizer, arena).kind.(tokens.Question); is_question {
 			next_token(tokenizer, arena) // consume ?
 			init_kind = .Undef
 		} else {

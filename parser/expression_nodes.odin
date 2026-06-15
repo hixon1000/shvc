@@ -6,7 +6,7 @@ import "stack"
 import "tokens"
 
 Op_Item :: struct {
-	token:    tokens.Token,
+	token:    tokens.Spanned_Token,
 	is_unary: bool,
 }
 
@@ -15,7 +15,7 @@ precedence :: proc(item: Op_Item) -> u8 {
 		return 6 // high precedence
 	}
 
-	#partial switch _ in item.token {
+	#partial switch _ in item.token.kind {
 	case tokens.Assign, tokens.Plus_Assign, tokens.Minus_Assign:
 		return 1
 	case tokens.Equal, tokens.Not_Equal:
@@ -32,10 +32,10 @@ precedence :: proc(item: Op_Item) -> u8 {
 	panic("precedence input token not an operator") // TODO: proper error handling
 }
 
-create_leaf_node :: proc(token: tokens.Token, alloc: runtime.Allocator) -> ^ast.AST_Node { 	// alloc should be in the arena
+create_leaf_node :: proc(token: tokens.Spanned_Token, alloc: runtime.Allocator) -> ^ast.AST_Node { 	// alloc should be in the arena
 	node := new(ast.AST_Node, alloc)
 
-	#partial switch t in token {
+	#partial switch t in token.kind {
 	case tokens.Identifier:
 		node^ = ast.Identifier {
 			name = t.content,
@@ -67,26 +67,26 @@ create_leaf_node :: proc(token: tokens.Token, alloc: runtime.Allocator) -> ^ast.
 
 create_binary_node :: proc(
 	left: ^ast.AST_Node,
-	op: tokens.Token,
+	op: tokens.Spanned_Token,
 	right: ^ast.AST_Node,
 	arena: runtime.Allocator,
 ) -> ^ast.AST_Node { 	// do this even need allocation
 	node: ast.AST_Node = ast.Binary_Op {
 		left  = left,
-		op    = op,
+		op    = op.kind,
 		right = right,
 	}
 	return new_clone(node, arena)
 }
 
 create_unary_node :: proc(
-	op: tokens.Token,
+	op: tokens.Spanned_Token,
 	operand: ^ast.AST_Node,
 	arena: runtime.Allocator,
 ) -> ^ast.AST_Node {
 	node := new(ast.AST_Node, arena)
 	node^ = ast.Unary_Op {
-		op      = op,
+		op      = op.kind,
 		operand = operand,
 	}
 	return node
@@ -108,7 +108,7 @@ apply_operator :: proc(
 		return
 	}
 
-	#partial switch _ in op_item.token {
+	#partial switch _ in op_item.token.kind {
 	case tokens.Assign,
 	     tokens.Plus_Assign,
 	     tokens.Minus_Assign,
@@ -131,16 +131,16 @@ apply_operator :: proc(
 	}
 }
 
-is_right_assoc :: proc(token: tokens.Token) -> bool {
-	#partial switch _ in token {
+is_right_assoc :: proc(token: tokens.Spanned_Token) -> bool {
+	#partial switch _ in token.kind {
 	case tokens.Assign, tokens.Plus_Assign, tokens.Minus_Assign:
 		return true
 	}
 	return false
 }
 
-is_unary :: proc(token: tokens.Token) -> bool {
-	#partial switch _ in token {
+is_unary :: proc(token: tokens.Spanned_Token) -> bool {
+	#partial switch _ in token.kind {
 	case tokens.Ampersand, tokens.Caret:
 		return true
 	}

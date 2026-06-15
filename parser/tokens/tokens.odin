@@ -128,3 +128,13 @@ Token :: union {
 	// strings
 	String_Literal,
 }
+
+Span :: struct {
+	start: int, // inclusive rune index
+	end:   int, // exclusive rune index
+}
+
+Spanned_Token :: struct {
+	kind: Token,
+	span: Span,
+}

@@ -11,7 +11,7 @@ import "tokens"
 Tokenizer :: struct {
 	source:       [dynamic]rune, // somehow
 	cursor:       int, // index of the cursor, each index is one rune
-	peeked_token: tokens.Token,
+	peeked_token: tokens.Spanned_Token,
 	has_peeked:   bool,
 }
 
@@ -50,7 +50,7 @@ is_ident_char :: proc(r: rune) -> bool {
 	return unicode.is_alpha(r) || unicode.is_digit(r) || r == '_'
 }
 
-unget_token :: proc(tokenizer: ^Tokenizer, token: tokens.Token) {
+unget_token :: proc(tokenizer: ^Tokenizer, token: tokens.Spanned_Token) {
 	tokenizer.peeked_token = token
 	tokenizer.has_peeked = true
 }
@@ -69,14 +69,22 @@ peek_next :: proc(tokenizer: ^Tokenizer) -> (result: rune, ok: bool) #optional_o
 	return
 }
 
+spanned :: proc(tokenizer: ^Tokenizer, start: int, kind: tokens.Token) -> tokens.Spanned_Token {
+	return tokens.Spanned_Token{
+		kind = kind,
+		span = tokens.Span{start = start, end = tokenizer.cursor},
+	}
+}
 
-scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> tokens.Token {
+scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> tokens.Spanned_Token {
 	if !skip_whitespace_and_comments(tokenizer) {
 		panic("unterminated block comment")
 	}
 
+	start := tokenizer.cursor
+
 	if is_at_end(tokenizer) {
-		return tokens.Eof{}
+		return spanned(tokenizer, start, tokens.Eof{})
 	}
 
 	char := peek(tokenizer)
@@ -84,87 +92,87 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 	switch char {
 	case ':':
 		advance(tokenizer)
-		return tokens.Colon{}
+		return spanned(tokenizer, start, tokens.Colon{})
 	case '-':
 		if n, ok := peek_next(tokenizer); ok && n == '>' {
 			advance(tokenizer, 2)
-			return tokens.Arrow{}
+			return spanned(tokenizer, start, tokens.Arrow{})
 		}
 		if n, ok := peek_next(tokenizer); ok && n == '=' {
 			advance(tokenizer, 2)
-			return tokens.Minus_Assign{} // For i -= 1
+			return spanned(tokenizer, start, tokens.Minus_Assign{}) // For i -= 1
 		}
 		advance(tokenizer)
-		return tokens.Minus{}
+		return spanned(tokenizer, start, tokens.Minus{})
 	case '^':
 		advance(tokenizer)
-		return tokens.Caret{}
+		return spanned(tokenizer, start, tokens.Caret{})
 	case '&':
 		advance(tokenizer)
-		return tokens.Ampersand{}
+		return spanned(tokenizer, start, tokens.Ampersand{})
 	case '=':
 		if n, ok := peek_next(tokenizer); ok && n == '=' { 	// ==
 			advance(tokenizer, 2)
-			return tokens.Equal{}
+			return spanned(tokenizer, start, tokens.Equal{})
 		}
 		advance(tokenizer)
-		return tokens.Assign{}
+		return spanned(tokenizer, start, tokens.Assign{})
 	case '!':
 		if n, ok := peek_next(tokenizer); ok && n == '=' {
 			advance(tokenizer, 2)
-			return tokens.Not_Equal{}
+			return spanned(tokenizer, start, tokens.Not_Equal{})
 		}
 		panic("unexpected character: !")
 	case ',':
 		advance(tokenizer)
-		return tokens.Comma{}
+		return spanned(tokenizer, start, tokens.Comma{})
 	case '?':
 		advance(tokenizer)
-		return tokens.Question{}
+		return spanned(tokenizer, start, tokens.Question{})
 	case '.':
 		advance(tokenizer)
-		return tokens.Dot{}
+		return spanned(tokenizer, start, tokens.Dot{})
 	case ';':
 		advance(tokenizer)
-		return tokens.Semi_Colon{}
+		return spanned(tokenizer, start, tokens.Semi_Colon{})
 	case '+':
 		if n, ok := peek_next(tokenizer); ok && n == '=' {
 			advance(tokenizer, 2)
-			return tokens.Plus_Assign{}
+			return spanned(tokenizer, start, tokens.Plus_Assign{})
 		}
 		advance(tokenizer)
-		return tokens.Plus{}
+		return spanned(tokenizer, start, tokens.Plus{})
 	case '*':
 		advance(tokenizer)
-		return tokens.Star{}
+		return spanned(tokenizer, start, tokens.Star{})
 	case '/':
 		advance(tokenizer)
-		return tokens.Slash{}
+		return spanned(tokenizer, start, tokens.Slash{})
 	case '<':
 		advance(tokenizer)
-		return tokens.Less{}
+		return spanned(tokenizer, start, tokens.Less{})
 	case '>':
 		advance(tokenizer)
-		return tokens.Greater{}
+		return spanned(tokenizer, start, tokens.Greater{})
 
 	case '(':
 		advance(tokenizer)
-		return tokens.Open_Paren{}
+		return spanned(tokenizer, start, tokens.Open_Paren{})
 	case ')':
 		advance(tokenizer)
-		return tokens.Close_Paren{}
+		return spanned(tokenizer, start, tokens.Close_Paren{})
 	case '{':
 		advance(tokenizer)
-		return tokens.Open_Bracket{}
+		return spanned(tokenizer, start, tokens.Open_Bracket{})
 	case '}':
 		advance(tokenizer)
-		return tokens.Close_Bracket{}
+		return spanned(tokenizer, start, tokens.Close_Bracket{})
 	case '[':
 		advance(tokenizer)
-		return tokens.Open_SB{}
+		return spanned(tokenizer, start, tokens.Open_SB{})
 	case ']':
 		advance(tokenizer)
-		return tokens.Close_SB{}
+		return spanned(tokenizer, start, tokens.Close_SB{})
 
 	// normal string literal
 	case '"':
@@ -208,11 +216,15 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 		}
 		advance(tokenizer)
 
-		return tokens.String_Literal{strings.clone(strings.to_string(b), allocator)}
+		return spanned(
+			tokenizer,
+			start,
+			tokens.String_Literal{strings.clone(strings.to_string(b), allocator)},
+		)
 
 	case '`':
 		advance(tokenizer) // consume opening backtick
-		start := tokenizer.cursor
+		raw_start := tokenizer.cursor
 
 		for !is_at_end(tokenizer) && peek(tokenizer) != '`' {
 			advance(tokenizer)
@@ -220,68 +232,72 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 
 		if is_at_end(tokenizer) do panic("unterminated raw string literal")
 
-		raw_slice := tokenizer.source[start:tokenizer.cursor]
+		raw_slice := tokenizer.source[raw_start:tokenizer.cursor]
 		advance(tokenizer) // consume closing backtick
 
 		temp_str := utf8.runes_to_string(raw_slice, context.temp_allocator)
-		return tokens.String_Literal{strings.clone(temp_str, allocator)}
+		return spanned(tokenizer, start, tokens.String_Literal{strings.clone(temp_str, allocator)})
 	}
 
 	if unicode.is_alpha(char) || char == '_' {
-		start := tokenizer.cursor
+		ident_start := tokenizer.cursor
 		for !is_at_end(tokenizer) && is_ident_char(peek(tokenizer)) {
 			advance(tokenizer)
 		}
 
-		text_slice := tokenizer.source[start:tokenizer.cursor]
+		text_slice := tokenizer.source[ident_start:tokenizer.cursor]
 
 		text := utf8.runes_to_string(text_slice, context.temp_allocator)
 
 		switch text {
 		case "val":
-			return tokens.Val{}
+			return spanned(tokenizer, ident_start, tokens.Val{})
 		case "mut":
-			return tokens.Mut{}
+			return spanned(tokenizer, ident_start, tokens.Mut{})
 		case "fn":
-			return tokens.Fn{}
+			return spanned(tokenizer, ident_start, tokens.Fn{})
 		case "trait":
-			return tokens.Trait{}
+			return spanned(tokenizer, ident_start, tokens.Trait{})
 		case "return":
-			return tokens.Return{}
+			return spanned(tokenizer, ident_start, tokens.Return{})
 		case "if":
-			return tokens.If{}
+			return spanned(tokenizer, ident_start, tokens.If{})
 		case "else":
-			return tokens.Else{}
+			return spanned(tokenizer, ident_start, tokens.Else{})
 		case "do":
-			return tokens.Do{}
+			return spanned(tokenizer, ident_start, tokens.Do{})
 		case "struct":
-			return tokens.Struct{}
+			return spanned(tokenizer, ident_start, tokens.Struct{})
 		case "for":
-			return tokens.For{}
+			return spanned(tokenizer, ident_start, tokens.For{})
 		case "defer":
-			return tokens.Defer{}
+			return spanned(tokenizer, ident_start, tokens.Defer{})
 		case "in":
-			return tokens.In{}
+			return spanned(tokenizer, ident_start, tokens.In{})
 		case "break":
-			return tokens.Break{}
+			return spanned(tokenizer, ident_start, tokens.Break{})
 		case "continue":
-			return tokens.Continue{}
+			return spanned(tokenizer, ident_start, tokens.Continue{})
 
 		case "as":
 			// if next is !
 			if !is_at_end(tokenizer) && peek(tokenizer) == '!' {
 				advance(tokenizer)
-				return tokens.As_Bang{}
+				return spanned(tokenizer, ident_start, tokens.As_Bang{})
 			}
-			return tokens.As{}
+			return spanned(tokenizer, ident_start, tokens.As{})
 
 		case:
-			return tokens.Identifier{strings.clone(text, allocator)}
+			return spanned(
+				tokenizer,
+				ident_start,
+				tokens.Identifier{strings.clone(text, allocator)},
+			)
 		}
 	}
 
 	if unicode.is_digit(char) {
-		start := tokenizer.cursor
+		num_start := tokenizer.cursor
 		is_float := false
 
 		// eat init digits
@@ -326,7 +342,7 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 		}
 
 		// extract, parse, profit
-		num_slice := tokenizer.source[start:tokenizer.cursor]
+		num_slice := tokenizer.source[num_start:tokenizer.cursor]
 		num_str := utf8.runes_to_string(num_slice, context.temp_allocator)
 
 		if is_float {
@@ -334,13 +350,13 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 			if !ok {
 				panic("fail to parse float") // TODO: proper error handling
 			}
-			return tokens.Float_Literal{val}
+			return spanned(tokenizer, num_start, tokens.Float_Literal{val})
 		} else {
 			val, ok := strconv.parse_int(num_str)
 			if !ok {
 				panic("fail to parse int") // TODO: proper error handling
 			}
-			return tokens.Int_Literal{cast(i32)val}
+			return spanned(tokenizer, num_start, tokens.Int_Literal{cast(i32)val})
 		}
 	}
 
@@ -348,7 +364,7 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 	panic("unexpected character")
 }
 
-next_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> tokens.Token {
+next_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> tokens.Spanned_Token {
 	if tokenizer.has_peeked {
 		tokenizer.has_peeked = false
 		return tokenizer.peeked_token
@@ -357,7 +373,7 @@ next_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 	return scan_token(tokenizer, allocator)
 }
 
-peek_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> tokens.Token {
+peek_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> tokens.Spanned_Token {
 	if !tokenizer.has_peeked {
 		tokenizer.peeked_token = scan_token(tokenizer, allocator)
 		tokenizer.has_peeked = true
