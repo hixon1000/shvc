@@ -7,6 +7,11 @@ struct Foo {
   field2: i32,
 }
 
+trait Bar {
+  fn a(arg: i32) -> i32
+  fn b(arg: i32) -> i32
+}
+
 fn main(arg1: i32) -> Foo {
   if a == 12 {
     println("hi")

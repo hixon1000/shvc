@@ -17,6 +17,16 @@ Program:
     Int_Literal: 1
   Struct_Decl: Foo
     Fields: [field1: Integer32{}, field2: Integer32{}]
+  Trait_Decl: Bar
+    Methods:
+      Fn_Decl: a
+        Args: [arg: Integer32{}]
+        Returns: Integer32{}
+        Body:
+      Fn_Decl: b
+        Args: [arg: Integer32{}]
+        Returns: Integer32{}
+        Body:
   Fn_Decl: main
     Args: [arg1: Integer32{}]
     Returns: Custom_Type{name = "Foo"}
