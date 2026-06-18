@@ -26,6 +26,28 @@ Colon{}
 Identifier{content = "i32"}
 Comma{}
 Close_Bracket{}
+Trait{}
+Identifier{content = "Bar"}
+Open_Bracket{}
+Fn{}
+Identifier{content = "a"}
+Open_Paren{}
+Identifier{content = "arg"}
+Colon{}
+Identifier{content = "i32"}
+Close_Paren{}
+Arrow{}
+Identifier{content = "i32"}
+Fn{}
+Identifier{content = "b"}
+Open_Paren{}
+Identifier{content = "arg"}
+Colon{}
+Identifier{content = "i32"}
+Close_Paren{}
+Arrow{}
+Identifier{content = "i32"}
+Close_Bracket{}
 Fn{}
 Identifier{content = "main"}
 Open_Paren{}
