@@ -164,9 +164,6 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 	case '>':
 		advance(tokenizer)
 		return spanned(tokenizer, start, tokens.Greater{})
-	case '%':
-		advance(tokenizer)
-		return spanned(tokenizer, start, tokens.Percentage{})
 
 	case '(':
 		advance(tokenizer)
