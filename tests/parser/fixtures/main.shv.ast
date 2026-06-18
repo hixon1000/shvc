@@ -5,7 +5,7 @@ Program:
     Kind: Expr
     Type: Integer32{}
     Init:
-      Int_Literal: 12
+      Int_Literal: 12000
   Var_Decl: b
     Mut: true
     Kind: Expr

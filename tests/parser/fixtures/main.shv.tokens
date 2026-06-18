@@ -3,7 +3,7 @@ Identifier{content = "a"}
 Colon{}
 Identifier{content = "i32"}
 Assign{}
-Int_Literal{content = 12}
+Int_Literal{content = 12000}
 Mut{}
 Val{}
 Identifier{content = "b"}

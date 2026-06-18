@@ -61,7 +61,7 @@
 - [ ] goto
 - [ ] directives to modify functions / variables / structs & more
 - [ ] fast math directive
-- [ ] int literal sugar (1_000_000)
+- [x] int literal sugar (1_000_000)
 - [ ] unpack operator (mutliarg_fn(**array))
 
 # Analyzer
