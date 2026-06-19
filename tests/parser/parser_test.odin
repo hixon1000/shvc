@@ -82,24 +82,24 @@ test_large_program_ast_generation :: proc(t: ^testing.T) {
 		testing.fail(t)
 
 		dump_file, err := os.create("./tests/parser/dumped/ast_dump.txt")
-    
-    buffer_len := 1
-    for line in actual_lines {
-      buffer_len += len(line) + 1
-    }
-    buffer := make([]u8, buffer_len)
-    index := 0
-    for line in actual_lines {
-      for char in line {
-        buffer[index] = cast(u8)(char)
-        index += 1
-      }
-      buffer[index] = '\n' 
-      index += 1
-    }
-    os.write(dump_file, buffer)
-    os.close(dump_file)
-    delete(buffer)
-    log.errorf("\n\n\nDumped AST into ./tests/parser/dumped/ast_dump.text\n\n")
+
+		buffer_len := 1
+		for line in actual_lines {
+			buffer_len += len(line) + 1
+		}
+		buffer := make([]u8, buffer_len)
+		index := 0
+		for line in actual_lines {
+			for char in line {
+				buffer[index] = cast(u8)(char)
+				index += 1
+			}
+			buffer[index] = '\n'
+			index += 1
+		}
+		os.write(dump_file, buffer)
+		os.close(dump_file)
+		delete(buffer)
+		log.errorf("\n\n\nDumped AST into ./tests/parser/dumped/ast_dump.text\n\n")
 	}
 }

@@ -19,12 +19,12 @@ package parser_test
 import "../../parser"
 import "../../parser/tokens"
 import "core:fmt"
+import "core:io"
 import "core:log"
 import "core:mem/virtual"
 import "core:os"
 import "core:strings"
 import "core:testing"
-import "core:io"
 
 LARGE_SRC :: #load("fixtures/main.shv", string)
 EXPECTED_TOK :: #load("fixtures/main.shv.tokens", string)
@@ -69,26 +69,26 @@ test_entire_token_chain :: proc(t: ^testing.T) {
 
 	if had_err {
 		dump_file, err := os.create("./tests/parser/dumped/tokens_dump.txt")
-    
-    if err == nil{
-      buffer_len := 1
-      for line in actual_lines {
-        buffer_len += len(line) + 1
-      }
-      buffer := make([]u8, buffer_len)
-      index := 0
-      for line in actual_lines {
-        for char in line {
-          buffer[index] = cast(u8)(char)
-          index += 1
-        }
-        buffer[index] = '\n' 
-        index += 1
-      }
-      os.write(dump_file, buffer)
-      os.close(dump_file)
-      delete(buffer)
-      log.errorf("\n\n\nDumped Tokens into ./tests/parser/dumped/tokens_dump.text\n\n")
-    }
+
+		if err == nil {
+			buffer_len := 1
+			for line in actual_lines {
+				buffer_len += len(line) + 1
+			}
+			buffer := make([]u8, buffer_len)
+			index := 0
+			for line in actual_lines {
+				for char in line {
+					buffer[index] = cast(u8)(char)
+					index += 1
+				}
+				buffer[index] = '\n'
+				index += 1
+			}
+			os.write(dump_file, buffer)
+			os.close(dump_file)
+			delete(buffer)
+			log.errorf("\n\n\nDumped Tokens into ./tests/parser/dumped/tokens_dump.text\n\n")
+		}
 	}
 }
