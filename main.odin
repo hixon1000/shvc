@@ -13,7 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
 package shiver
 
 import "core:fmt"
@@ -25,8 +24,7 @@ main :: proc() {
 	context.allocator = mem.panic_allocator()
 
 	file := os.args[1]
-
-	program := parser.parse_file(file)
+  program := parser.parse_file(file)
 	parser.debug_ast_print(program)
 
 	fmt.println("done")
