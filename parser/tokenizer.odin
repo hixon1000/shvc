@@ -153,9 +153,17 @@ scan_token :: proc(tokenizer: ^Tokenizer, allocator: runtime.Allocator) -> token
 		advance(tokenizer)
 		return spanned(tokenizer, start, tokens.Plus{})
 	case '*':
+		if n, ok := peek_next(tokenizer); ok && n == '=' {
+			advance(tokenizer, 2)
+			return spanned(tokenizer, start, tokens.Star_Assign{})
+		}
 		advance(tokenizer)
 		return spanned(tokenizer, start, tokens.Star{})
 	case '/':
+		if n, ok := peek_next(tokenizer); ok && n == '=' {
+			advance(tokenizer, 2)
+			return spanned(tokenizer, start, tokens.Slash_Assign{})
+		}
 		advance(tokenizer)
 		return spanned(tokenizer, start, tokens.Slash{})
 	case '<':

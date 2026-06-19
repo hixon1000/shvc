@@ -15,6 +15,12 @@ Program:
   Binary_Op: Plus_Assign{}
     Identifier: b
     Int_Literal: 1
+  Binary_Op: Star_Assign{}
+    Identifier: b
+    Int_Literal: 2
+  Binary_Op: Slash_Assign{}
+    Identifier: b
+    Int_Literal: 3
   Struct_Decl: Foo
     Fields: [field1: Integer32{}, field2: Integer32{}]
   Trait_Decl: Bar

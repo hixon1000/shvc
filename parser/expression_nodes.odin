@@ -32,7 +32,7 @@ precedence :: proc(item: Op_Item) -> u8 {
 	}
 
 	#partial switch _ in item.token.kind {
-	case tokens.Assign, tokens.Plus_Assign, tokens.Minus_Assign:
+	case tokens.Assign, tokens.Plus_Assign, tokens.Minus_Assign, tokens.Star_Assign, tokens.Slash_Assign:
 		return 1
 	case tokens.Equal, tokens.Not_Equal:
 		return 2
@@ -131,6 +131,8 @@ apply_operator :: proc(
 	case tokens.Assign,
 	     tokens.Plus_Assign,
 	     tokens.Minus_Assign,
+		 tokens.Star_Assign,
+		 tokens.Slash_Assign,
 	     tokens.Plus,
 	     tokens.Minus,
 	     tokens.Star,
@@ -152,7 +154,7 @@ apply_operator :: proc(
 
 is_right_assoc :: proc(token: tokens.Spanned_Token) -> bool {
 	#partial switch _ in token.kind {
-	case tokens.Assign, tokens.Plus_Assign, tokens.Minus_Assign:
+	case tokens.Assign, tokens.Plus_Assign, tokens.Minus_Assign, tokens.Star_Assign, tokens.Slash_Assign:
 		return true
 	}
 	return false

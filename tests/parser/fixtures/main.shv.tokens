@@ -14,6 +14,12 @@ Int_Literal{content = 12}
 Identifier{content = "b"}
 Plus_Assign{}
 Int_Literal{content = 1}
+Identifier{content = "b"}
+Star_Assign{}
+Int_Literal{content = 2}
+Identifier{content = "b"}
+Slash_Assign{}
+Int_Literal{content = 3}
 Struct{}
 Identifier{content = "Foo"}
 Open_Bracket{}

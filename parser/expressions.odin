@@ -207,6 +207,8 @@ parse_expression :: proc(
 		case tokens.Assign,
 		     tokens.Plus_Assign,
 		     tokens.Minus_Assign,
+			 tokens.Star_Assign,
+			 tokens.Slash_Assign,
 		     tokens.Star,
 		     tokens.Slash,
 		     tokens.Equal,

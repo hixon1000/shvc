@@ -35,6 +35,8 @@ Less :: struct {} // <
 Greater :: struct {} // >
 Plus_Assign :: struct {} // +=
 Minus_Assign :: struct {} // -=
+Star_Assign :: struct {} // *=
+Slash_Assign :: struct {} // /=
 Question :: struct {} // ?
 Dot :: struct {} // .
 
@@ -109,6 +111,9 @@ Token :: union {
 	Greater,
 	Plus_Assign,
 	Minus_Assign,
+	Star_Assign,
+	Slash_Assign,
+
 
 	// brackets
 	Open_Paren,
