@@ -19,7 +19,6 @@ package parser_test
 import "../../parser"
 import "../../parser/tokens"
 import "core:fmt"
-import "core:io"
 import "core:log"
 import "core:mem/virtual"
 import "core:os"

@@ -81,7 +81,7 @@ test_large_program_ast_generation :: proc(t: ^testing.T) {
 		log.errorf("========================================\n")
 		testing.fail(t)
 
-		dump_file, err := os.create("./tests/parser/dumped/ast_dump.txt")
+		dump_file, _ := os.create("./tests/parser/dumped/ast_dump.txt")
 
 		buffer_len := 1
 		for line in actual_lines {
