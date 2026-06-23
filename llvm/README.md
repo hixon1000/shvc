@@ -1,9 +1,9 @@
 # LLVM Bindings
 
-LLVM-C bindings for LLVM `21.x`. Supports Windows and Linux. Darwin is not supported as the developers does not own
+LLVM-C bindings for LLVM `22.x`. Supports Windows and Linux. Darwin is not supported as the developers does not own
 Apple devices.
 
-Tested on LLVM `21.1.8`.
+Tested on LLVM `22.1.8`.
 
 ## Linux Special Instructions
 
@@ -11,7 +11,7 @@ If you use these bindings on Linux, remember to pass in `-extra-linker-flags`. I
 (Gentoo Linux), the command looks like so:
 ```bash
 # change the path depending on the location of your LLVM installation
-odin build . -extra-linker-flags="-L/usr/lib/llvm/21/lib64"
+odin build . -extra-linker-flags="-L/usr/lib/llvm/22/lib64"
 ```
 
 ## Windows Special Instructions
