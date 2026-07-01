@@ -46,7 +46,19 @@ write_indent :: proc(b: ^strings.Builder, indent: int) {
 	}
 }
 
-write_node :: proc(b: ^strings.Builder, node: ^ast.AST_Node, indent: int) {
+write_node :: proc(b: ^strings.Builder, node: ^ast.Spanned_AST, indent: int) {
+	if node == nil {
+		write_indent(b, indent)
+		strings.write_string(b, "<nil>\n")
+		return
+	}
+
+	write_indent(b, indent)
+	fmt.sbprintf(b, "Span: %d..%d\n", node.span.start, node.span.end)
+	write_node_raw(b, &node.kind, indent)
+}
+
+write_node_raw :: proc(b: ^strings.Builder, node: ^ast.AST_Node, indent: int) {
 	if node == nil {
 		write_indent(b, indent)
 		strings.write_string(b, "<nil>\n")
@@ -127,7 +139,7 @@ write_node :: proc(b: ^strings.Builder, node: ^ast.AST_Node, indent: int) {
 
 			for method in v.methods^ {
 				method_node: ast.AST_Node = method
-				write_node(b, &method_node, indent + 2)
+				write_node_raw(b, &method_node, indent + 2)
 			}
 		}
 
@@ -283,7 +295,7 @@ write_node :: proc(b: ^strings.Builder, node: ^ast.AST_Node, indent: int) {
 		if v.fields != nil {
 			for field in v.fields^ {
 				node: ast.AST_Node = field
-				write_node(b, &node, indent + 2)
+				write_node_raw(b, &node, indent + 2)
 			}
 		} else {
 			write_indent(b, indent + 2)

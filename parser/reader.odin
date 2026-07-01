@@ -22,7 +22,7 @@ import "core:mem/virtual"
 import "core:os"
 
 Parse_Result :: struct {
-	root:      ^ast.AST_Node,
+	root:      ^ast.Spanned_AST,
 	ast_arena: virtual.Arena,
 }
 

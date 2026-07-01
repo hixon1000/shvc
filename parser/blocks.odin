@@ -19,10 +19,11 @@ package parser
 import "ast"
 import "base:runtime"
 import "stack"
+import "tokens"
 
 make_block :: proc(arena: runtime.Allocator) -> ^ast.Block {
-	items_ptr := new([dynamic]^ast.AST_Node, arena)
-	items_ptr^ = make([dynamic]^ast.AST_Node, arena)
+	items_ptr := new([dynamic]^ast.Spanned_AST, arena)
+	items_ptr^ = make([dynamic]^ast.Spanned_AST, arena)
 
 	block := new(ast.Block, arena)
 	block^ = ast.Block {
@@ -32,20 +33,33 @@ make_block :: proc(arena: runtime.Allocator) -> ^ast.Block {
 	return block
 }
 
-make_block_node :: proc(block: ^ast.Block, arena: runtime.Allocator) -> ^ast.AST_Node {
-	node := new(ast.AST_Node, arena)
-	node^ = block^
+make_block_node :: proc(block: ^ast.Block, arena: runtime.Allocator) -> ^ast.Spanned_AST {
+	node := new(ast.Spanned_AST, arena)
+	node.kind = block^
+
+	if block.items != nil && len(block.items) > 0 {
+		first := block.items[0]
+		last := block.items[len(block.items) - 1]
+		if first != nil && last != nil {
+			node.span = tokens.Span{start = first.span.start, end = last.span.end}
+		} else {
+			node.span = tokens.Span{start = 0, end = 0}
+		}
+	} else {
+		node.span = tokens.Span{start = 0, end = 0}
+	}
+
 	return node
 }
 
-add_statement_to_block :: proc(block: ^ast.Block, statement: ^ast.AST_Node) {
+add_statement_to_block :: proc(block: ^ast.Block, statement: ^ast.Spanned_AST) {
 	if block == nil || statement == nil {
 		panic("nil block or statement")
 	}
 	append(block.items, statement)
 }
 
-parse_block_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
+parse_block_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
 	scope_stack := stack.make_stack(^ast.Block, context.temp_allocator)
 
 	root_block := make_block(arena)

@@ -19,14 +19,15 @@ package parser
 import "ast"
 import "base:runtime"
 import "stack"
+import "tokens"
 
-parse_program :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
+parse_program :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
 	scope_stack := stack.make_stack(^ast.Block, context.temp_allocator)
 
 	root_block := make_block(arena)
 
-	root := new(ast.AST_Node, arena)
-	root^ = ast.Program {
+	root := new(ast.Spanned_AST, arena)
+	root.kind = ast.Program {
 		statements = root_block^,
 	}
 
@@ -44,5 +45,6 @@ parse_program :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.A
 		panic("missing closing bracket")
 	}
 
+	root.span = tokens.Span{start = 0, end = tokenizer.cursor}
 	return root
 }

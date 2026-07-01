@@ -100,9 +100,11 @@ parse_fn_signature :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 	return fn
 }
 
-parse_trait_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
-	name_tok, idok := next_token(tokenizer, arena).kind.(tokens.Identifier)
+parse_trait_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
+	name_spanned := next_token(tokenizer, arena)
+	name_tok, idok := name_spanned.kind.(tokens.Identifier)
 	if !idok do panic("expected trait name")
+	start := name_spanned.span.start
 
 	if _, obok := next_token(tokenizer, arena).kind.(tokens.Open_Bracket); !obok {
 		panic("expected '{' after trait name")
@@ -132,12 +134,12 @@ parse_trait_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 		}
 	}
 
-	node := new(ast.AST_Node, arena)
-	node^ = ast.Trait_Decl {
+	node := new(ast.Spanned_AST, arena)
+	node.kind = ast.Trait_Decl {
 		name    = name_tok.content,
 		methods = methods_ptr,
 	}
-
+	node.span = tokens.Span{start = start, end = tokenizer.cursor}
 	return node
 }
 
@@ -205,9 +207,10 @@ parse_struct_signature :: proc(
 	return structure
 }
 
-parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
+parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
 	token := next_token(tokenizer, arena)
 	is_mutable := false
+	start := token.span.start
 
 	// check if its mut
 	if _, ok := token.kind.(tokens.Mut); ok {
@@ -234,7 +237,7 @@ parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.
 
 	// optional init
 	init_kind := ast.Var_Init_Kind.Zero
-	value_expr: ^ast.AST_Node = nil
+	value_expr: ^ast.Spanned_AST = nil
 
 	if _, has_assign := peek_token(tokenizer, arena).kind.(tokens.Assign); has_assign {
 		next_token(tokenizer, arena) // consume =
@@ -247,16 +250,22 @@ parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.
 			init_kind = .Expr
 		}
 	}
-
+	end: int
+		if value_expr != nil {
+    	end = value_expr.span.end          // after the init expression
+	} else {
+		end = tokenizer.cursor
+	}
 	// make node
-	node := new(ast.AST_Node, arena)
-	node^ = ast.Var_Decl {
+	node := new(ast.Spanned_AST, arena)
+	node.kind = ast.Var_Decl {
 		name      = name_tok.content,
 		type_info = var_type,
 		is_mut    = is_mutable,
 		init_kind = init_kind,
 		init_expr = value_expr,
 	}
+	node.span = tokens.Span{start = start, end = end}
 
 	return node
 }

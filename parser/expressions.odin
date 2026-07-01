@@ -25,9 +25,9 @@ parse_expression :: proc(
 	tokenizer: ^Tokenizer,
 	arena: runtime.Allocator,
 	allow_struct_literal: bool = true,
-) -> ^ast.AST_Node {
+) -> ^ast.Spanned_AST {
 	operator_stack := stack.make_stack(Op_Item, context.temp_allocator)
-	operand_stack := stack.make_stack(^ast.AST_Node, context.temp_allocator)
+	operand_stack := stack.make_stack(^ast.Spanned_AST, context.temp_allocator)
 
 	open_paren_count := 0
 	expecting_op := false // flag if we are in infix / postfix
@@ -77,15 +77,16 @@ parse_expression :: proc(
 			}
 
 			next := peek_token(tokenizer, arena)
-			operand: ^ast.AST_Node
+			operand: ^ast.Spanned_AST
 
 			if _, is_call := next.kind.(tokens.Open_Paren); is_call {
 				// eat the (
-				next_token(tokenizer, arena)
+				bracket_tkn := next_token(tokenizer, arena)
+				start := bracket_tkn.span.start
 
-				call_node := new(ast.AST_Node, arena)
-				args_list := new([dynamic]^ast.AST_Node, arena)
-				args_list^ = make([dynamic]^ast.AST_Node, arena)
+				call_node := new(ast.Spanned_AST, arena)
+				args_list := new([dynamic]^ast.Spanned_AST, arena)
+				args_list^ = make([dynamic]^ast.Spanned_AST, arena)
 
 				if _, empty := peek_token(tokenizer, arena).kind.(tokens.Close_Paren); !empty {
 					for {
@@ -107,11 +108,11 @@ parse_expression :: proc(
 					next_token(tokenizer, arena)
 				}
 
-				call_node^ = ast.Call {
+				call_node.kind = ast.Call {
 					target = create_leaf_node(token, arena),
 					args   = args_list,
 				}
-
+				call_node.span = tokens.Span{start = start, end = tokenizer.cursor}
 				operand = call_node
 			} else {
 				operand = create_leaf_node(token, arena)
@@ -193,12 +194,13 @@ parse_expression :: proc(
 			target_type := parse_type(tokenizer, arena)
 			_, is_reinterpret := token.kind.(tokens.As_Bang)
 
-			node := new(ast.AST_Node, arena)
-			node^ = ast.Cast_Expr {
+			node := new(ast.Spanned_AST, arena)
+			node.kind = ast.Cast_Expr {
 				expr           = left,
 				target_type    = target_type,
 				is_reinterpret = is_reinterpret,
 			}
+			node.span = tokens.Span{start = left.span.start, end = tokenizer.cursor}
 
 			stack.push(&operand_stack, node)
 			expecting_op = true // cast expression acts as a completed operand phrase

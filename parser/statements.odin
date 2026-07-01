@@ -33,6 +33,7 @@ parse_statement_into_current_scope :: proc(
 	is_root: bool,
 ) -> Parse_Status {
 	token := next_token(tokenizer, arena)
+	start := token.span.start
 
 	if _, eofok := token.kind.(tokens.Eof); eofok {
 		if !is_root {
@@ -53,10 +54,12 @@ parse_statement_into_current_scope :: proc(
 
 	#partial switch _ in token.kind {
 	case tokens.Fn:
+		start := token.span.start
 		fn := parse_fn_signature(tokenizer, arena)
 
-		fn_node := new(ast.AST_Node, arena)
-		fn_node^ = fn
+		fn_node := new(ast.Spanned_AST, arena)
+		fn_node.kind = fn
+		fn_node.span = tokens.Span{start = start, end = tokenizer.cursor}
 
 		add_statement_to_block(current_scope, fn_node)
 
@@ -70,8 +73,9 @@ parse_statement_into_current_scope :: proc(
 	case tokens.Struct:
 		structure := parse_struct_signature(tokenizer, arena)
 
-		struct_node := new(ast.AST_Node, arena)
-		struct_node^ = structure
+		struct_node := new(ast.Spanned_AST, arena)
+		struct_node.kind = structure
+		struct_node.span = tokens.Span{start = start, end = tokenizer.cursor}
 
 		add_statement_to_block(current_scope, struct_node)
 
@@ -115,33 +119,33 @@ parse_statement_into_current_scope :: proc(
 		add_statement_to_block(current_scope, var_node)
 
 	case tokens.Defer:
-		defer_node := new(ast.AST_Node, arena)
+		defer_node := new(ast.Spanned_AST, arena)
 
 		if _, is_block := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); is_block {
 			next_token(tokenizer, arena)
 
 			defer_block := make_block(arena)
 
-			defer_node^ = ast.Defer_Stmt {
+			defer_node.kind = ast.Defer_Stmt {
 				stmt = make_block_node(defer_block, arena),
 			}
-
+			defer_node.span = tokens.Span{start = start, end = tokenizer.cursor}
 			add_statement_to_block(current_scope, defer_node)
 
 			stack.push(scope_stack, defer_block)
 		} else {
 			expr := parse_expression(tokenizer, arena)
 
-			defer_node^ = ast.Defer_Stmt {
+			defer_node.kind = ast.Defer_Stmt {
 				stmt = expr,
 			}
-
+			defer_node.span = tokens.Span{start = start, end = tokenizer.cursor}
 			add_statement_to_block(current_scope, defer_node)
 		}
 
 	case tokens.Return:
-		ret_node := new(ast.AST_Node, arena)
-		expr: ^ast.AST_Node = nil
+		ret_node := new(ast.Spanned_AST, arena)
+		expr: ^ast.Spanned_AST = nil
 
 		// see if theres an expr following return
 		next_tok := peek_token(tokenizer, arena)
@@ -153,20 +157,22 @@ parse_statement_into_current_scope :: proc(
 			expr = parse_expression(tokenizer, arena)
 		}
 
-		ret_node^ = ast.Return_Stmt {
+		ret_node.kind = ast.Return_Stmt {
 			expr = expr,
 		}
-
+		ret_node.span = tokens.Span{start = start, end = tokenizer.cursor}
 		add_statement_to_block(current_scope, ret_node)
 
 	case tokens.Continue:
-		continue_node := new(ast.AST_Node, arena)
-		continue_node^ = ast.Continue_Stmt{}
+		continue_node := new(ast.Spanned_AST, arena)
+		continue_node.kind = ast.Continue_Stmt{}
+		continue_node.span = tokens.Span{start = start, end = tokenizer.cursor}
 		add_statement_to_block(current_scope, continue_node)
 
 	case tokens.Break:
-		break_node := new(ast.AST_Node, arena)
-		break_node^ = ast.Break_Stmt{}
+		break_node := new(ast.Spanned_AST, arena)
+		break_node.kind = ast.Break_Stmt{}
+		break_node.span = tokens.Span{start = start, end = tokenizer.cursor}
 		add_statement_to_block(current_scope, break_node)
 
 	case tokens.If:
@@ -187,8 +193,9 @@ parse_statement_into_current_scope :: proc(
 parse_single_statement_after_do :: proc(
 	tokenizer: ^Tokenizer,
 	arena: runtime.Allocator,
-) -> ^ast.AST_Node {
+) -> ^ast.Spanned_AST {
 	token := next_token(tokenizer, arena)
+	start := token.span.start
 
 	#partial switch _ in token.kind {
 	case tokens.Identifier,
@@ -206,17 +213,19 @@ parse_single_statement_after_do :: proc(
 		return parse_var_decl(tokenizer, arena)
 
 	case tokens.Continue:
-		node := new(ast.AST_Node, arena)
-		node^ = ast.Continue_Stmt{}
+		node := new(ast.Spanned_AST, arena)
+		node.kind = ast.Continue_Stmt{}
+		node.span = tokens.Span{start = start, end = tokenizer.cursor}
 		return node
 
 	case tokens.Break:
-		node := new(ast.AST_Node, arena)
-		node^ = ast.Break_Stmt{}
+		node := new(ast.Spanned_AST, arena)
+		node.kind = ast.Break_Stmt{}
+		node.span = tokens.Span{start = start, end = tokenizer.cursor}
 		return node
 
 	case tokens.Defer:
-		defer_node := new(ast.AST_Node, arena)
+		defer_node := new(ast.Spanned_AST, arena)
 
 		if _, is_block := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); is_block {
 			panic("block defer is not allowed after 'do'; use 'if cond { defer { ... } }'")
@@ -224,10 +233,10 @@ parse_single_statement_after_do :: proc(
 
 		expr := parse_expression(tokenizer, arena)
 
-		defer_node^ = ast.Defer_Stmt {
+		defer_node.kind = ast.Defer_Stmt {
 			stmt = expr,
 		}
-
+		defer_node.span = tokens.Span{start = start, end = tokenizer.cursor}
 		return defer_node
 
 	case:
@@ -237,7 +246,7 @@ parse_single_statement_after_do :: proc(
 	panic("unreachable") // im going to crash out if we hit this
 }
 
-parse_if_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
+parse_if_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
 	next := next_token(tokenizer, arena)
 
 	#partial switch _ in next.kind {
@@ -254,11 +263,11 @@ parse_if_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.A
 	panic("unreachable")
 }
 
-parse_if_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
-	conditions := make([dynamic]^ast.AST_Node, arena)
-	bodies := make([dynamic]^ast.AST_Node, arena)
+parse_if_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
+	conditions := make([dynamic]^ast.Spanned_AST, arena)
+	bodies := make([dynamic]^ast.Spanned_AST, arena)
 
-	final_else: ^ast.AST_Node = nil
+	final_else: ^ast.Spanned_AST = nil
 
 	// parse first if
 	first_cond := parse_expression(tokenizer, arena, false)
@@ -310,13 +319,19 @@ parse_if_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^
 	tail := final_else
 
 	for i := len(conditions) - 1; i >= 0; i -= 1 {
-		node := new(ast.AST_Node, arena)
+		node := new(ast.Spanned_AST, arena)
 
-		node^ = ast.If_Stmt {
+		end_span := bodies[i].span.end
+		if tail != nil {
+			end_span = tail.span.end
+		}
+
+		node.kind = ast.If_Stmt {
 			condition = conditions[i],
 			body      = bodies[i],
 			else_stmt = tail,
 		}
+		node.span = tokens.Span{start = conditions[i].span.start, end = end_span}
 
 		tail = node
 
@@ -328,7 +343,7 @@ parse_if_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^
 	return tail
 }
 
-parse_for_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
+parse_for_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
 	next := next_token(tokenizer, arena)
 
 	#partial switch _ in next.kind {
@@ -359,17 +374,18 @@ next_is_open_bracket :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) ->
 	return false
 }
 
-parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.AST_Node {
-	node := new(ast.AST_Node, arena)
-
+parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
+	node := new(ast.Spanned_AST, arena)
+	for_start := tokenizer.cursor - 3
 	// for { ... }
 	if _, is_block := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); is_block {
 		body := parse_for_body(tokenizer, arena)
 
-		node^ = ast.For_Stmt {
+		node.kind = ast.For_Stmt {
 			kind = .Infinite,
 			body = body,
 		}
+		node.span = tokens.Span{start = for_start, end = body.span.end}
 
 		return node
 	}
@@ -384,7 +400,7 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 			panic("expected ';' after for-loop initializer")
 		}
 
-		condition: ^ast.AST_Node = nil
+		condition: ^ast.Spanned_AST = nil
 		if _, is_sc := peek_token(tokenizer, arena).kind.(tokens.Semi_Colon); !is_sc {
 			condition = parse_expression(tokenizer, arena)
 		}
@@ -393,20 +409,21 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 			panic("expected ';' after for-loop condition")
 		}
 
-		post: ^ast.AST_Node = nil
+		post: ^ast.Spanned_AST = nil
 		if _, is_body := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); !is_body {
 			post = parse_expression(tokenizer, arena, false)
 		}
 
 		body := parse_for_body(tokenizer, arena)
 
-		node^ = ast.For_Stmt {
+		node.kind = ast.For_Stmt {
 			kind      = .C_Style,
 			init      = init,
 			condition = condition,
 			post      = post,
 			body      = body,
 		}
+		node.span = tokens.Span{start = for_start, end = body.span.end}
 
 		return node
 	}
@@ -418,7 +435,7 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 			panic("expected ';' after for-loop initializer")
 		}
 
-		condition: ^ast.AST_Node = nil
+		condition: ^ast.Spanned_AST = nil
 		if _, is_sc := peek_token(tokenizer, arena).kind.(tokens.Semi_Colon); !is_sc {
 			condition = parse_expression(tokenizer, arena)
 		}
@@ -427,20 +444,21 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 			panic("expected ';' after for-loop condition")
 		}
 
-		post: ^ast.AST_Node = nil
+		post: ^ast.Spanned_AST = nil
 		if _, is_body := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); !is_body {
 			post = parse_expression(tokenizer, arena, false)
 		}
 
 		body := parse_for_body(tokenizer, arena)
 
-		node^ = ast.For_Stmt {
+		node.kind = ast.For_Stmt {
 			kind      = .C_Style,
 			init      = init,
 			condition = condition,
 			post      = post,
 			body      = body,
 		}
+		node.span = tokens.Span{start = for_start, end = body.span.end}
 
 		return node
 	}
@@ -467,13 +485,14 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 		iter_expr := parse_expression(tokenizer, arena, false)
 		body := parse_for_body(tokenizer, arena)
 
-		node^ = ast.For_Stmt {
+		node.kind = ast.For_Stmt {
 			kind            = .Each,
 			iter_value_name = ast.Identifier{first_tok.content},
 			iter_index_name = ast.Identifier{index_tok.content},
 			iter_expr       = iter_expr,
 			body            = body,
 		}
+		node.span = tokens.Span{start = for_start, end = body.span.end}
 
 		return node
 	}
@@ -485,12 +504,13 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 		iter_expr := parse_expression(tokenizer, arena, false)
 		body := parse_for_body(tokenizer, arena)
 
-		node^ = ast.For_Stmt {
+		node.kind = ast.For_Stmt {
 			kind            = .Each,
 			iter_value_name = ast.Identifier{first_tok.content},
 			iter_expr       = iter_expr,
 			body            = body,
 		}
+		node.span = tokens.Span{start = for_start, end = body.span.end}
 
 		return node
 	}
@@ -506,7 +526,7 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 		panic("expected ';' after for-loop initializer or 'in' for iterator loop")
 	}
 
-	condition: ^ast.AST_Node = nil
+	condition: ^ast.Spanned_AST = nil
 	if _, is_sc := peek_token(tokenizer, arena).kind.(tokens.Semi_Colon); !is_sc {
 		// ?
 		condition = parse_expression(tokenizer, arena)
@@ -516,20 +536,21 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 		panic("expected ';' after for-loop condition")
 	}
 
-	post: ^ast.AST_Node = nil
+	post: ^ast.Spanned_AST = nil
 	if _, is_body := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); !is_body {
 		post = parse_expression(tokenizer, arena, false)
 	}
 
 	body := parse_for_body(tokenizer, arena)
 
-	node^ = ast.For_Stmt {
+	node.kind = ast.For_Stmt {
 		kind      = .C_Style,
 		init      = init,
 		condition = condition,
 		post      = post,
 		body      = body,
 	}
+	node.span = tokens.Span{start = for_start, end = body.span.end}
 
 	return node
 }

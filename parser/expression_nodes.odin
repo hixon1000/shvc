@@ -51,30 +51,30 @@ precedence :: proc(item: Op_Item) -> u8 {
 create_leaf_node :: proc(
 	token: tokens.Spanned_Token,
 	alloc: runtime.Allocator,
-) -> ^ast.AST_Node { 	// alloc should be in the arena
-	node := new(ast.AST_Node, alloc)
-
+) -> ^ast.Spanned_AST { 	// alloc should be in the arena
+	node := new(ast.Spanned_AST, alloc)
+	node.span = token.span
 	#partial switch t in token.kind {
 	case tokens.Identifier:
-		node^ = ast.Identifier {
+		node.kind = ast.Identifier {
 			name = t.content,
 		}
 		return node
 
 	case tokens.Int_Literal:
-		node^ = ast.Int_Literal {
+		node.kind = ast.Int_Literal {
 			value = t.content,
 		}
 		return node
 
 	case tokens.Float_Literal:
-		node^ = ast.Float_Literal {
+		node.kind = ast.Float_Literal {
 			value = t.content,
 		}
 		return node
 
 	case tokens.String_Literal:
-		node^ = ast.String_Literal {
+		node.kind = ast.String_Literal {
 			value = t.content,
 		}
 		return node
@@ -85,35 +85,38 @@ create_leaf_node :: proc(
 }
 
 create_binary_node :: proc(
-	left: ^ast.AST_Node,
+	left: ^ast.Spanned_AST,
 	op: tokens.Spanned_Token,
-	right: ^ast.AST_Node,
+	right: ^ast.Spanned_AST,
 	arena: runtime.Allocator,
-) -> ^ast.AST_Node { 	// do this even need allocation
-	node: ast.AST_Node = ast.Binary_Op {
+) -> ^ast.Spanned_AST { 	// do this even need allocation
+	node := new(ast.Spanned_AST, arena)
+	node.kind = ast.Binary_Op {
 		left  = left,
 		op    = op.kind,
 		right = right,
 	}
-	return new_clone(node, arena)
+	node.span = tokens.Span{start = left.span.start, end = right.span.end}
+	return node
 }
 
 create_unary_node :: proc(
 	op: tokens.Spanned_Token,
-	operand: ^ast.AST_Node,
+	operand: ^ast.Spanned_AST,
 	arena: runtime.Allocator,
-) -> ^ast.AST_Node {
-	node := new(ast.AST_Node, arena)
-	node^ = ast.Unary_Op {
+) -> ^ast.Spanned_AST {
+	node := new(ast.Spanned_AST, arena)
+	node.kind = ast.Unary_Op {
 		op      = op.kind,
 		operand = operand,
 	}
+	node.span = tokens.Span{start = op.span.start, end = operand.span.end}
 	return node
 }
 
 apply_operator :: proc(
 	operator_stack: ^stack.Stack(Op_Item),
-	operand_stack: ^stack.Stack(^ast.AST_Node),
+	operand_stack: ^stack.Stack(^ast.Spanned_AST),
 	arena: runtime.Allocator,
 ) {
 	op_item, ostack_ok := stack.pop(operator_stack)

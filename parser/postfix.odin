@@ -23,8 +23,8 @@ import "tokens"
 parse_postfix_expr :: proc(
 	tokenizer: ^Tokenizer,
 	arena: runtime.Allocator,
-	base: ^ast.AST_Node,
-) -> ^ast.AST_Node {
+	base: ^ast.Spanned_AST,
+) -> ^ast.Spanned_AST {
 	result := base
 
 	for {
@@ -43,8 +43,8 @@ parse_postfix_expr :: proc(
 			if _, is_call := peek_token(tokenizer, arena).kind.(tokens.Open_Paren); is_call {
 				next_token(tokenizer, arena) // consume (
 
-				args_list := new([dynamic]^ast.AST_Node, arena)
-				args_list^ = make([dynamic]^ast.AST_Node, arena)
+				args_list := new([dynamic]^ast.Spanned_AST, arena)
+				args_list^ = make([dynamic]^ast.Spanned_AST, arena)
 
 				if _, empty := peek_token(tokenizer, arena).kind.(tokens.Close_Paren); !empty {
 					for {
@@ -74,7 +74,9 @@ parse_postfix_expr :: proc(
 					args   = args_list,
 				}
 
-				result = node
+				result = new(ast.Spanned_AST, arena)
+				result.kind = node^
+				result.span = tokens.Span{start = base.span.start, end = tokenizer.cursor}
 				continue
 			}
 
@@ -85,7 +87,9 @@ parse_postfix_expr :: proc(
 				field  = field_tok.content,
 			}
 
-			result = node
+			result = new(ast.Spanned_AST, arena)
+			result.kind = node^
+			result.span = tokens.Span{start = base.span.start, end = tokenizer.cursor}
 			continue
 
 		case tokens.Open_SB:
@@ -98,8 +102,8 @@ parse_postfix_expr :: proc(
 			// a[:j]
 			// a[i:j]
 
-			start: ^ast.AST_Node = nil
-			end: ^ast.AST_Node = nil
+			start: ^ast.Spanned_AST = nil
+			end: ^ast.Spanned_AST = nil
 
 			if _, has_colon_first := peek_token(tokenizer, arena).kind.(tokens.Colon);
 			   has_colon_first {
@@ -120,7 +124,9 @@ parse_postfix_expr :: proc(
 					end    = end,
 				}
 
-				result = node
+				result = new(ast.Spanned_AST, arena)
+				result.kind = node^
+				result.span = tokens.Span{start = base.span.start, end = tokenizer.cursor}
 				continue
 			}
 
@@ -148,7 +154,9 @@ parse_postfix_expr :: proc(
 					end    = end,
 				}
 
-				result = node
+				result = new(ast.Spanned_AST, arena)
+				result.kind = node^
+				result.span = tokens.Span{start = base.span.start, end = tokenizer.cursor}
 				continue
 			}
 
@@ -162,7 +170,9 @@ parse_postfix_expr :: proc(
 				index  = start,
 			}
 
-			result = node
+			result = new(ast.Spanned_AST, arena)
+			result.kind = node^
+			result.span = tokens.Span{start = base.span.start, end = tokenizer.cursor}
 			continue
 
 		case:

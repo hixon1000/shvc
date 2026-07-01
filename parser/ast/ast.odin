@@ -27,7 +27,7 @@ Type_Pair :: struct {
 }
 
 Block :: struct {
-	items: ^[dynamic]^AST_Node,
+	items: ^[dynamic]^Spanned_AST,
 }
 
 Program :: struct {
@@ -35,8 +35,8 @@ Program :: struct {
 }
 
 Call :: struct {
-	target: ^AST_Node,
-	args:   ^[dynamic]^AST_Node,
+	target: ^Spanned_AST,
+	args:   ^[dynamic]^Spanned_AST,
 }
 
 Var_Init_Kind :: enum {
@@ -49,7 +49,7 @@ Var_Decl :: struct {
 	name:      string,
 	is_mut:    bool,
 	type_info: stock_types.Types,
-	init_expr: ^AST_Node,
+	init_expr: ^Spanned_AST,
 	init_kind: Var_Init_Kind,
 }
 
@@ -71,55 +71,55 @@ Trait_Decl :: struct {
 }
 
 If_Stmt :: struct {
-	condition: ^AST_Node,
-	body:      ^AST_Node, // usually a block, may be a single statement for do
-	else_stmt: ^AST_Node, // can be nil, another If_Stmt, or Block
+	condition: ^Spanned_AST,
+	body:      ^Spanned_AST, // usually a block, may be a single statement for do
+	else_stmt: ^Spanned_AST, // can be nil, another If_Stmt, or Block
 }
 
 Array_Literal :: struct {
-	items: ^[dynamic]^AST_Node,
+	items: ^[dynamic]^Spanned_AST,
 }
 
 Struct_Literal_Field :: struct {
 	name:  string,
-	value: ^AST_Node,
+	value: ^Spanned_AST,
 }
 
 Struct_Literal :: struct {
-	type:   ^AST_Node,
+	type:   ^Spanned_AST,
 	fields: ^[dynamic]Struct_Literal_Field,
 }
 
 Index_Expr :: struct {
-	target: ^AST_Node,
-	index:  ^AST_Node,
+	target: ^Spanned_AST,
+	index:  ^Spanned_AST,
 }
 
 Slice_Expr :: struct {
-	target: ^AST_Node,
+	target: ^Spanned_AST,
 
 	// nil -> omitted
 	// a[:]   => start=nil, end=nil
 	// a[i:]  => start=i, end=nil
 	// a[:j]  => start=nil, end=j
 	// a[i:j] => start=i, end=j
-	start:  ^AST_Node,
-	end:    ^AST_Node,
+	start:  ^Spanned_AST,
+	end:    ^Spanned_AST,
 }
 
 Cast_Expr :: struct {
-	expr:           ^AST_Node,
+	expr:           ^Spanned_AST,
 	target_type:    stock_types.Types,
 	is_reinterpret: bool,
 }
 
 Defer_Stmt :: struct {
-	stmt: ^AST_Node,
+	stmt: ^Spanned_AST,
 }
 
 Return_Stmt :: struct {
 	// may be nil
-	expr: ^AST_Node,
+	expr: ^Spanned_AST,
 }
 
 Continue_Stmt :: struct {}
@@ -135,18 +135,18 @@ For_Stmt :: struct {
 	kind:            For_Kind,
 
 	// for { }
-	body:            ^AST_Node,
+	body:            ^Spanned_AST,
 
 	// for i in array { }
 	// for i, index in array { }
 	iter_value_name: Identifier,
 	iter_index_name: Identifier, // empty if absent
-	iter_expr:       ^AST_Node,
+	iter_expr:       ^Spanned_AST,
 
 	// for init; condition; post { }
-	init:            ^AST_Node,
-	condition:       ^AST_Node,
-	post:            ^AST_Node,
+	init:            ^Spanned_AST,
+	condition:       ^Spanned_AST,
+	post:            ^Spanned_AST,
 }
 
 Identifier :: struct {
@@ -166,25 +166,30 @@ String_Literal :: struct {
 }
 
 Binary_Op :: struct {
-	left:  ^AST_Node,
+	left:  ^Spanned_AST,
 	op:    tokens.Token,
-	right: ^AST_Node,
+	right: ^Spanned_AST,
 }
 
 Unary_Op :: struct {
 	op:      tokens.Token,
-	operand: ^AST_Node,
+	operand: ^Spanned_AST,
 }
 
 Field_Access :: struct {
-	target: ^AST_Node,
+	target: ^Spanned_AST,
 	field:  string,
 }
 
 Method_Call :: struct {
-	target: ^AST_Node,
+	target: ^Spanned_AST,
 	method: string,
-	args:   ^[dynamic]^AST_Node,
+	args:   ^[dynamic]^Spanned_AST,
+}
+
+Spanned_AST :: struct {
+	kind: AST_Node,
+	span: tokens.Span,
 }
 
 AST_Node :: union {
