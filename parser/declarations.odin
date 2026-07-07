@@ -24,14 +24,17 @@ import "tokens"
 
 // name ( args ) -> type
 // args as in name : type , name : type , ...
-parse_fn_signature :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ast.Fn_Decl {
+parse_fn_signature :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
 	fn := ast.Fn_Decl{}
 	args_ptr := new([dynamic]ast.Type_Pair, arena)
 	args_ptr^ = make([dynamic]ast.Type_Pair, arena)
 	fn.args = args_ptr
-	fn.body = make_block(arena)
+	root_block := make_block(arena)
 
-	first_tok, idok := next_token(tokenizer, arena).kind.(tokens.Identifier)
+	first_tok_spanned := next_token(tokenizer, arena)
+	start := first_tok_spanned.span.start
+
+	first_tok, idok := first_tok_spanned.kind.(tokens.Identifier)
 	if !idok do panic("expected function or method name")
 
 	if _, has_dot := peek_token(tokenizer, arena).kind.(tokens.Dot); has_dot {
@@ -92,12 +95,18 @@ parse_fn_signature :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> a
 
 	fn.ret_type = types.Unit{}
 
+	end_token := peek_token(tokenizer, arena)
 	if _, arok := peek_token(tokenizer, arena).kind.(tokens.Arrow); arok {
 		next_token(tokenizer, arena) // consume ->
 		fn.ret_type = parse_type(tokenizer, arena)
 	}
 
-	return fn
+	fn.body = make_block_node(root_block, tokens.Span{start = tokenizer.cursor, end = tokenizer.cursor}, arena)
+
+	node := new(ast.Spanned_AST, arena)
+	node.kind = fn
+	node.span = tokens.Span{start = start, end = end_token.span.end}
+	return node
 }
 
 parse_trait_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
@@ -124,7 +133,7 @@ parse_trait_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 		#partial switch _ in tok.kind {
 		case tokens.Fn:
 			method_sig := parse_fn_signature(tokenizer, arena)
-			append(methods_ptr, method_sig)
+			append(methods_ptr, method_sig.kind.(ast.Fn_Decl))
 
 		case tokens.Semi_Colon:
 			continue
@@ -250,9 +259,11 @@ parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.
 			init_kind = .Expr
 		}
 	}
+	// after the init expression
+	
 	end: int
-		if value_expr != nil {
-    	end = value_expr.span.end          // after the init expression
+	if value_expr != nil {
+    	end = value_expr.span.end          
 	} else {
 		end = tokenizer.cursor
 	}

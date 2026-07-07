@@ -29,7 +29,7 @@ Parse_Status :: enum {
 parse_statement_into_current_scope :: proc(
 	tokenizer: ^Tokenizer,
 	arena: runtime.Allocator,
-	scope_stack: ^stack.Stack(^ast.Block),
+	scope_stack: ^stack.Stack(^ast.Spanned_AST),
 	is_root: bool,
 ) -> Parse_Status {
 	token := next_token(tokenizer, arena)
@@ -58,14 +58,14 @@ parse_statement_into_current_scope :: proc(
 		fn := parse_fn_signature(tokenizer, arena)
 
 		fn_node := new(ast.Spanned_AST, arena)
-		fn_node.kind = fn
+		fn_node.kind = fn.kind
 		fn_node.span = tokens.Span{start = start, end = tokenizer.cursor}
 
 		add_statement_to_block(current_scope, fn_node)
 
 		if _, obok := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); obok {
 			next_token(tokenizer, arena)
-			stack.push(scope_stack, fn.body)
+			stack.push(scope_stack, fn.kind.(ast.Fn_Decl).body)
 		} else {
 			panic("expected function body")
 		}
@@ -81,14 +81,15 @@ parse_statement_into_current_scope :: proc(
 
 	case tokens.Trait:
 		trait_decl := parse_trait_decl(tokenizer, arena)
+		trait_decl.span = tokens.Span{start = start, end = tokenizer.cursor}
 		add_statement_to_block(current_scope, trait_decl)
 
 	case tokens.Open_Bracket:
 		new_block := make_block(arena)
-		block_node := make_block_node(new_block, arena)
+		block_node := make_block_node(new_block, tokens.Span{start = start, end = tokenizer.cursor}, arena)
 
 		add_statement_to_block(current_scope, block_node)
-		stack.push(scope_stack, new_block)
+		stack.push(scope_stack, block_node)
 
 	case tokens.Close_Bracket:
 		if scope_stack.len <= 1 {
@@ -127,12 +128,12 @@ parse_statement_into_current_scope :: proc(
 			defer_block := make_block(arena)
 
 			defer_node.kind = ast.Defer_Stmt {
-				stmt = make_block_node(defer_block, arena),
+				stmt = make_block_node(defer_block, tokens.Span{start = start, end = tokenizer.cursor}, arena),
 			}
 			defer_node.span = tokens.Span{start = start, end = tokenizer.cursor}
 			add_statement_to_block(current_scope, defer_node)
 
-			stack.push(scope_stack, defer_block)
+			stack.push(scope_stack, defer_node)
 		} else {
 			expr := parse_expression(tokenizer, arena)
 

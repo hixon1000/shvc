@@ -57,7 +57,7 @@ Fn_Decl :: struct {
 	name:     string,
 	args:     ^[dynamic]Type_Pair,
 	ret_type: stock_types.Types,
-	body:     ^Block,
+	body:     ^Spanned_AST, // kind must be Block
 }
 
 Struct_Decl :: struct {

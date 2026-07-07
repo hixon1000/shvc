@@ -107,9 +107,10 @@ write_node_raw :: proc(b: ^strings.Builder, node: ^ast.AST_Node, indent: int) {
 
 		if v.body != nil {
 			write_indent(b, indent + 1)
-			strings.write_string(b, "Body:\n")
-			if v.body.items != nil {
-				for stmt in v.body.items^ {
+			strings.write_string(b, "Body: ")
+			fmt.sbprintf(b, "Span: %d..%d\n", v.body.span.start, v.body.span.end)
+			if v.body.kind.(ast.Block).items != nil {
+				for stmt in v.body.kind.(ast.Block).items^ {
 					write_node(b, stmt, indent + 2)
 				}
 			}

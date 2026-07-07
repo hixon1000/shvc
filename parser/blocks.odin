@@ -33,37 +33,41 @@ make_block :: proc(arena: runtime.Allocator) -> ^ast.Block {
 	return block
 }
 
-make_block_node :: proc(block: ^ast.Block, arena: runtime.Allocator) -> ^ast.Spanned_AST {
+make_block_node :: proc(block: ^ast.Block, span: tokens.Span, arena: runtime.Allocator) -> ^ast.Spanned_AST {
 	node := new(ast.Spanned_AST, arena)
 	node.kind = block^
-
-	if block.items != nil && len(block.items) > 0 {
-		first := block.items[0]
-		last := block.items[len(block.items) - 1]
-		if first != nil && last != nil {
-			node.span = tokens.Span{start = first.span.start, end = last.span.end}
-		} else {
-			node.span = tokens.Span{start = 0, end = 0}
-		}
-	} else {
-		node.span = tokens.Span{start = 0, end = 0}
-	}
+	node.span = span
 
 	return node
 }
 
-add_statement_to_block :: proc(block: ^ast.Block, statement: ^ast.Spanned_AST) {
+add_statement_to_block :: proc(block: ^ast.Spanned_AST, statement: ^ast.Spanned_AST) {
 	if block == nil || statement == nil {
 		panic("nil block or statement")
 	}
-	append(block.items, statement)
+
+	block_node, ok := block.kind.(ast.Block)
+	if !ok {
+		panic("block.kind must be a Block AST node")
+	}
+
+	if (block.span.start > statement.span.start) {
+		block.span.start = statement.span.start
+	} else if (block.span.end < statement.span.end) {
+		block.span.end = statement.span.end
+	}
+
+    append(block_node.items, statement)
+	
 }
 
 parse_block_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
-	scope_stack := stack.make_stack(^ast.Block, context.temp_allocator)
+	scope_stack := stack.make_stack(^ast.Spanned_AST, context.temp_allocator)
 
 	root_block := make_block(arena)
-	stack.push(&scope_stack, root_block)
+	start := peek_token(tokenizer, arena).span.start
+	root_block_node := make_block_node(root_block, tokens.Span{start = start, end = start}, arena)
+	stack.push(&scope_stack, root_block_node)
 
 	for {
 		status := parse_statement_into_current_scope(tokenizer, arena, &scope_stack, false)
@@ -76,6 +80,5 @@ parse_block_body :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 	if scope_stack.len != 0 {
 		panic("internal parser error: block parser ended with non-empty scope stack")
 	}
-
-	return make_block_node(root_block, arena)
+	return make_block_node(root_block, tokens.Span{start =  start, end = tokenizer.cursor}, arena)
 }

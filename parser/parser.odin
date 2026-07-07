@@ -22,16 +22,18 @@ import "stack"
 import "tokens"
 
 parse_program :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
-	scope_stack := stack.make_stack(^ast.Block, context.temp_allocator)
+	scope_stack := stack.make_stack(^ast.Spanned_AST, context.temp_allocator)
 
 	root_block := make_block(arena)
+	start := peek_token(tokenizer, arena).span.start
+	root_block_node := make_block_node(root_block, tokens.Span{start = start, end = start}, arena)
 
 	root := new(ast.Spanned_AST, arena)
 	root.kind = ast.Program {
 		statements = root_block^,
 	}
 
-	stack.push(&scope_stack, root_block)
+	stack.push(&scope_stack, root_block_node)
 
 	for {
 		status := parse_statement_into_current_scope(tokenizer, arena, &scope_stack, true)
