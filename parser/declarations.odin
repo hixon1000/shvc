@@ -119,8 +119,8 @@ parse_trait_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 		panic("expected '{' after trait name")
 	}
 
-	methods_ptr := new([dynamic]ast.Fn_Decl, arena)
-	methods_ptr^ = make([dynamic]ast.Fn_Decl, arena)
+	methods_ptr := new([dynamic]ast.Spanned_AST, arena)
+	methods_ptr^ = make([dynamic]ast.Spanned_AST, arena)
 
 	for {
 		if _, cbok := peek_token(tokenizer, arena).kind.(tokens.Close_Bracket); cbok {
@@ -133,7 +133,8 @@ parse_trait_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^as
 		#partial switch _ in tok.kind {
 		case tokens.Fn:
 			method_sig := parse_fn_signature(tokenizer, arena)
-			append(methods_ptr, method_sig.kind.(ast.Fn_Decl))
+			method_sig.span = tokens.Span{start = tok.span.start, end = tokenizer.cursor}
+			append(methods_ptr, method_sig^)
 
 		case tokens.Semi_Colon:
 			continue
@@ -243,6 +244,7 @@ parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.
 
 	// type parsing
 	var_type := parse_type(tokenizer, arena)
+	type_end := tokenizer.cursor  // capture end of type
 
 	// optional init
 	init_kind := ast.Var_Init_Kind.Zero
@@ -265,7 +267,7 @@ parse_var_decl :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.
 	if value_expr != nil {
     	end = value_expr.span.end          
 	} else {
-		end = tokenizer.cursor
+		end = type_end
 	}
 	// make node
 	node := new(ast.Spanned_AST, arena)

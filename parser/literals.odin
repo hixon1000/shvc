@@ -23,7 +23,7 @@ import "tokens"
 parse_array_literal :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
 	// opening { should have been consumed
 
-	start_token := next_token(tokenizer, arena)
+	start_token := peek_token(tokenizer, arena)
 	items_ptr := new([dynamic]^ast.Spanned_AST, arena)
 	items_ptr^ = make([dynamic]^ast.Spanned_AST, arena)
 
@@ -69,17 +69,19 @@ parse_struct_literal :: proc(
 	arena: runtime.Allocator,
 	first_token: tokens.Spanned_Token,
 ) -> ^ast.Spanned_AST {
-	fields_ptr := new([dynamic]ast.Struct_Literal_Field, arena)
-	fields_ptr^ = make([dynamic]ast.Struct_Literal_Field, arena)
+	fields_ptr := new([dynamic]ast.Spanned_AST, arena)
+	fields_ptr^ = make([dynamic]ast.Spanned_AST, arena)
 
 	// eat colon
 	next_token(tokenizer, arena)
-
-	// extrat first field string
+	
 	first_name := first_token.kind.(tokens.Identifier).content
 	first_val := parse_expression(tokenizer, arena)
 
-	append(fields_ptr, ast.Struct_Literal_Field{name = first_name, value = first_val})
+	struct_literal_field := new(ast.Spanned_AST, arena)
+	struct_literal_field.span = tokens.Span{start = first_token.span.start, end = first_val.span.end}
+	struct_literal_field.kind = ast.Struct_Literal_Field{name = first_name, value = first_val}
+	append(fields_ptr, struct_literal_field^)
 
 	// loop
 	for {
@@ -105,7 +107,11 @@ parse_struct_literal :: proc(
 			}
 
 			val_expr := parse_expression(tokenizer, arena)
-			append(fields_ptr, ast.Struct_Literal_Field{name = ident.content, value = val_expr})
+
+			struct_literal_field = new(ast.Spanned_AST, arena)
+			struct_literal_field.span = tokens.Span{start = ident_tok.span.start, end = val_expr.span.end}
+			struct_literal_field.kind = ast.Struct_Literal_Field{name = ident.content, value = val_expr}
+			append(fields_ptr, struct_literal_field^)
 
 			continue
 
@@ -164,8 +170,8 @@ parse_struct_literal_with_type :: proc(
 	first_token: tokens.Spanned_Token,
 	type_node: ^ast.Spanned_AST,
 ) -> ^ast.Spanned_AST {
-	fields_ptr := new([dynamic]ast.Struct_Literal_Field, arena)
-	fields_ptr^ = make([dynamic]ast.Struct_Literal_Field, arena)
+	fields_ptr := new([dynamic]ast.Spanned_AST, arena)
+	fields_ptr^ = make([dynamic]ast.Spanned_AST, arena)
 
 	// consume : for first k-v mapping
 	next_token(tokenizer, arena)
@@ -174,7 +180,10 @@ parse_struct_literal_with_type :: proc(
 	first_name := first_token.kind.(tokens.Identifier).content
 	first_val := parse_expression(tokenizer, arena)
 
-	append(fields_ptr, ast.Struct_Literal_Field{name = first_name, value = first_val})
+	struct_literal_field := new(ast.Spanned_AST, arena)
+	struct_literal_field.span = tokens.Span{start = first_token.span.start, end = first_val.span.end}
+	struct_literal_field.kind = ast.Struct_Literal_Field{name = first_name, value = first_val}
+	append(fields_ptr, struct_literal_field^)
 
 	// loop through remaining fields
 	for {
@@ -197,7 +206,11 @@ parse_struct_literal_with_type :: proc(
 			}
 
 			val_expr := parse_expression(tokenizer, arena)
-			append(fields_ptr, ast.Struct_Literal_Field{name = ident.content, value = val_expr})
+
+			struct_literal_field = new(ast.Spanned_AST, arena)
+			struct_literal_field.span = tokens.Span{start = ident_tok.span.start, end = val_expr.span.end}
+			struct_literal_field.kind = ast.Struct_Literal_Field{name = ident.content, value = val_expr}
+			append(fields_ptr, struct_literal_field^)
 			continue
 
 		case tokens.Close_Bracket:
@@ -228,8 +241,8 @@ parse_typed_braced_literal :: proc(
 	// empty literal Coord{}
 	if _, empty := first.kind.(tokens.Close_Bracket); empty {
 		node := new(ast.Spanned_AST, arena)
-		fields_ptr := new([dynamic]ast.Struct_Literal_Field, arena)
-		fields_ptr^ = make([dynamic]ast.Struct_Literal_Field, arena)
+		fields_ptr := new([dynamic]ast.Spanned_AST, arena)
+		fields_ptr^ = make([dynamic]ast.Spanned_AST, arena)
 		node.kind = ast.Struct_Literal {
 			type   = type_node,
 			fields = fields_ptr,

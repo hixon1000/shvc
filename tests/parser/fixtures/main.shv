@@ -1,5 +1,7 @@
 val a: i32 = 12_000
 mut val b: i32 = 12
+val my_array: [3]i32 = {1, 2, 3}
+
 b += 1
 b *= 2
 b /= 3
@@ -21,6 +23,22 @@ fn main(arg1: i32) -> Foo {
     println("hi2")
   } else {
     println ("hi3")
+  }
+
+  for val i: i32 = 0; i < 5; i += 1 do
+    println("for loop C-style", i)
+   
+  for i in my_array do
+    println("for loop Each", i)
+  
+  val c: i32 = 0
+
+  for {
+    if c > 5 {
+      break
+    } else {
+      c += 1
+    }
   }
 
   val c: Foo = {field1: 12, field2: 12}

@@ -180,11 +180,12 @@ parse_statement_into_current_scope :: proc(
 
 	case tokens.If:
 		if_node := parse_if_statement(tokenizer, arena)
-		if_node.span = tokens.Span{start = start, end = tokenizer.cursor}
+		if_node.span = tokens.Span{start = start, end = if_node.span.end}
 		add_statement_to_block(current_scope, if_node)
 
 	case tokens.For:
 		for_node := parse_for_statement(tokenizer, arena)
+		for_node.span = tokens.Span{start = start, end = for_node.span.end}
 		add_statement_to_block(current_scope, for_node)
 
 	case:
@@ -385,7 +386,7 @@ next_is_open_bracket :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) ->
 
 parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> ^ast.Spanned_AST {
 	node := new(ast.Spanned_AST, arena)
-	for_start := tokenizer.cursor - 3
+	for_start := tokenizer.cursor
 	// for { ... }
 	if _, is_block := peek_token(tokenizer, arena).kind.(tokens.Open_Bracket); is_block {
 		body := parse_for_body(tokenizer, arena)
@@ -395,7 +396,6 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 			body = body,
 		}
 		node.span = tokens.Span{start = for_start, end = body.span.end}
-
 		return node
 	}
 
@@ -468,7 +468,6 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 			body      = body,
 		}
 		node.span = tokens.Span{start = for_start, end = body.span.end}
-
 		return node
 	}
 
@@ -502,7 +501,6 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 			body            = body,
 		}
 		node.span = tokens.Span{start = for_start, end = body.span.end}
-
 		return node
 	}
 
@@ -520,7 +518,6 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 			body            = body,
 		}
 		node.span = tokens.Span{start = for_start, end = body.span.end}
-
 		return node
 	}
 
@@ -560,6 +557,5 @@ parse_for_statement :: proc(tokenizer: ^Tokenizer, arena: runtime.Allocator) -> 
 		body      = body,
 	}
 	node.span = tokens.Span{start = for_start, end = body.span.end}
-
 	return node
 }

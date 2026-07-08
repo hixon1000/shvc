@@ -1,94 +1,158 @@
 === AST DUMP ===
-Program:
-  Var_Decl: a
+Program: Span: 0..648
+  Var_Decl: a Span: 0..19
     Mut: false
     Kind: Expr
     Type: Integer32{}
     Init:
-      Int_Literal: 12000
-  Var_Decl: b
+      Int_Literal: 12000 Span: 13..19
+  Var_Decl: b Span: 20..39
     Mut: true
     Kind: Expr
     Type: Integer32{}
     Init:
-      Int_Literal: 12
-  Binary_Op: Plus_Assign{}
-    Identifier: b
-    Int_Literal: 1
-  Binary_Op: Star_Assign{}
-    Identifier: b
-    Int_Literal: 2
-  Binary_Op: Slash_Assign{}
-    Identifier: b
-    Int_Literal: 3
-  Struct_Decl: Foo
+      Int_Literal: 12 Span: 37..39
+  Var_Decl: my_array Span: 40..72
+    Mut: false
+    Kind: Expr
+    Type: Array{count_kind = "Fixed", count = 3, elem = &Integer32{}}
+    Init:
+      Array_Literal: Span: 64..72
+        Int_Literal: 1 Span: 64..65
+        Int_Literal: 2 Span: 67..68
+        Int_Literal: 3 Span: 70..71
+  Binary_Op: Plus_Assign{} Span: 74..80
+    Identifier: b Span: 74..75
+    Int_Literal: 1 Span: 79..80
+  Binary_Op: Star_Assign{} Span: 81..87
+    Identifier: b Span: 81..82
+    Int_Literal: 2 Span: 86..87
+  Binary_Op: Slash_Assign{} Span: 88..94
+    Identifier: b Span: 88..89
+    Int_Literal: 3 Span: 93..94
+  Struct_Decl: Foo Span: 96..140
     Fields: [field1: Integer32{}, field2: Integer32{}]
-  Trait_Decl: Bar
+  Trait_Decl: Bar Span: 142..203
     Methods:
-      Fn_Decl: a
+      Fn_Decl: a Span: 156..177
         Args: [arg: Integer32{}]
         Returns: Integer32{}
-        Body:
-      Fn_Decl: b
+        Body: Span: 177..177
+      Fn_Decl: b Span: 180..201
         Args: [arg: Integer32{}]
         Returns: Integer32{}
-        Body:
-  Fn_Decl: main
+        Body: Span: 201..201
+  Fn_Decl: main Span: 205..230
     Args: [arg1: Integer32{}]
     Returns: Custom_Type{name = "Foo"}
-    Body:
-      If_Stmt:
+    Body: Span: 231..648
+      If_Stmt: Span: 235..341
         Condition:
-          Binary_Op: Equal{}
-            Identifier: a
-            Int_Literal: 12
+          Binary_Op: Equal{} Span: 238..245
+            Identifier: a Span: 238..239
+            Int_Literal: 12 Span: 243..245
         Body:
-          Block:
-            Call:
+          Block: Span: 252..269
+            Call: Span: 259..265
               Target:
-                Identifier: println
+                Identifier: println Span: 252..259
               Arguments:
-                String_Literal: "hi"
+                String_Literal: "hi" Span: 260..264
         Else:
-          If_Stmt:
+          If_Stmt: Span: 275..341
             Condition:
-              Binary_Op: Equal{}
-                Identifier: a
-                Int_Literal: 13
+              Binary_Op: Equal{} Span: 278..285
+                Identifier: a Span: 278..279
+                Int_Literal: 13 Span: 283..285
             Body:
-              Block:
-                Call:
+              Block: Span: 292..310
+                Call: Span: 299..306
                   Target:
-                    Identifier: println
+                    Identifier: println Span: 292..299
                   Arguments:
-                    String_Literal: "hi2"
+                    String_Literal: "hi2" Span: 300..305
             Else:
-              Block:
-                Call:
+              Block: Span: 322..341
+                Call: Span: 330..337
                   Target:
-                    Identifier: println
+                    Identifier: println Span: 322..329
                   Arguments:
-                    String_Literal: "hi3"
-      Var_Decl: c
+                    String_Literal: "hi3" Span: 331..336
+      For_Stmt (C-Style): Span: 345..416
+        init:
+          Var_Decl: i Span: 349..363
+            Mut: false
+            Kind: Expr
+            Type: Integer32{}
+            Init:
+              Int_Literal: 0 Span: 362..363
+        condition:
+          Binary_Op: Less{} Span: 365..370
+            Identifier: i Span: 365..366
+            Int_Literal: 5 Span: 369..370
+        post:
+          Binary_Op: Plus_Assign{} Span: 372..378
+            Identifier: i Span: 372..373
+            Int_Literal: 1 Span: 377..378
+        body:
+          Call: Span: 393..416
+            Target:
+              Identifier: println Span: 386..393
+            Arguments:
+              String_Literal: "for loop C-style" Span: 394..412
+              Identifier: i Span: 414..415
+      For_Stmt (Each): Span: 423..475
+        value: i
+        iterable:
+          Identifier: my_array Span: 432..440
+        body:
+          Call: Span: 455..475
+            Target:
+              Identifier: println Span: 448..455
+            Arguments:
+              String_Literal: "for loop Each" Span: 456..471
+              Identifier: i Span: 473..474
+      Var_Decl: c Span: 481..495
+        Mut: false
+        Kind: Expr
+        Type: Integer32{}
+        Init:
+          Int_Literal: 0 Span: 494..495
+      For_Stmt (Infinite): Span: 499..567
+        Block: Span: 509..567
+          If_Stmt: Span: 509..563
+            Condition:
+              Binary_Op: Greater{} Span: 512..517
+                Identifier: c Span: 512..513
+                Int_Literal: 5 Span: 516..517
+            Body:
+              Block: Span: 526..537
+                Break_Stmt Span: 526..531
+            Else:
+              Block: Span: 551..563
+                Binary_Op: Plus_Assign{} Span: 551..557
+                  Identifier: c Span: 551..552
+                  Int_Literal: 1 Span: 556..557
+      Var_Decl: c Span: 571..608
         Mut: false
         Kind: Expr
         Type: Custom_Type{name = "Foo"}
         Init:
-          Struct_Literal:
+          Struct_Literal: Span: 585..608
             Type:
               <nil>
             Fields:
-              Struct_Literal_Field: field1 = 
-                Int_Literal: 12
-              Struct_Literal_Field: field2 = 
-                Int_Literal: 12
-      Return_Stmt:
-        Struct_Literal:
+              Struct_Literal_Field: field1 = Span: 585..595
+                Int_Literal: 12 Span: 593..595
+              Struct_Literal_Field: field2 = Span: 597..607
+                Int_Literal: 12 Span: 605..607
+      Return_Stmt: Span: 612..648
+        Struct_Literal: Span: 623..646
           Type:
-            Identifier: Foo
+            Identifier: Foo Span: 619..622
           Fields:
-            Struct_Literal_Field: field1 = 
-              Int_Literal: 13
-            Struct_Literal_Field: field2 = 
-              Int_Literal: 13
+            Struct_Literal_Field: field1 = Span: 623..633
+              Int_Literal: 13 Span: 631..633
+            Struct_Literal_Field: field2 = Span: 635..645
+              Int_Literal: 13 Span: 643..645
 ================

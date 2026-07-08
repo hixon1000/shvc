@@ -11,6 +11,21 @@ Colon{}
 Identifier{content = "i32"}
 Assign{}
 Int_Literal{content = 12}
+Val{}
+Identifier{content = "my_array"}
+Colon{}
+Open_SB{}
+Int_Literal{content = 3}
+Close_SB{}
+Identifier{content = "i32"}
+Assign{}
+Open_Bracket{}
+Int_Literal{content = 1}
+Comma{}
+Int_Literal{content = 2}
+Comma{}
+Int_Literal{content = 3}
+Close_Bracket{}
 Identifier{content = "b"}
 Plus_Assign{}
 Int_Literal{content = 1}
@@ -91,6 +106,61 @@ Identifier{content = "println"}
 Open_Paren{}
 String_Literal{content = "hi3"}
 Close_Paren{}
+Close_Bracket{}
+For{}
+Val{}
+Identifier{content = "i"}
+Colon{}
+Identifier{content = "i32"}
+Assign{}
+Int_Literal{content = 0}
+Semi_Colon{}
+Identifier{content = "i"}
+Less{}
+Int_Literal{content = 5}
+Semi_Colon{}
+Identifier{content = "i"}
+Plus_Assign{}
+Int_Literal{content = 1}
+Do{}
+Identifier{content = "println"}
+Open_Paren{}
+String_Literal{content = "for loop C-style"}
+Comma{}
+Identifier{content = "i"}
+Close_Paren{}
+For{}
+Identifier{content = "i"}
+In{}
+Identifier{content = "my_array"}
+Do{}
+Identifier{content = "println"}
+Open_Paren{}
+String_Literal{content = "for loop Each"}
+Comma{}
+Identifier{content = "i"}
+Close_Paren{}
+Val{}
+Identifier{content = "c"}
+Colon{}
+Identifier{content = "i32"}
+Assign{}
+Int_Literal{content = 0}
+For{}
+Open_Bracket{}
+If{}
+Identifier{content = "c"}
+Greater{}
+Int_Literal{content = 5}
+Open_Bracket{}
+Break{}
+Close_Bracket{}
+Else{}
+Open_Bracket{}
+Identifier{content = "c"}
+Plus_Assign{}
+Int_Literal{content = 1}
+Close_Bracket{}
 Close_Bracket{}
 Val{}
 Identifier{content = "c"}

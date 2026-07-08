@@ -67,7 +67,7 @@ Struct_Decl :: struct {
 
 Trait_Decl :: struct {
 	name:    string,
-	methods: ^[dynamic]Fn_Decl,
+	methods: ^[dynamic]Spanned_AST, // kind must be Fn_Decl
 }
 
 If_Stmt :: struct {
@@ -87,7 +87,7 @@ Struct_Literal_Field :: struct {
 
 Struct_Literal :: struct {
 	type:   ^Spanned_AST,
-	fields: ^[dynamic]Struct_Literal_Field,
+	fields: ^[dynamic]Spanned_AST, // kind must be Struct_Literal_Field
 }
 
 Index_Expr :: struct {
